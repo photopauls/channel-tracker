@@ -35,10 +35,16 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "PLACEHOLDER_TELEGRAM_
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "PLACEHOLDER_TELEGRAM_CHAT_ID")
 
 # --- tunables -----------------------------------------------------------
-ACTIVE_WINDOW_DAYS = 90       # how long a video stays in the "actively checked" pool
+# There is no age cutoff by default - every video a channel has ever uploaded
+# stays tracked and gets its view count refreshed every run. Set a per-channel
+# 'since: YYYY-MM-DD' in channels.yaml if you want to limit a specific channel
+# to only its videos from that date forward instead of its full history.
 OUTLIER_THRESHOLD = 1.75      # velocity must beat this multiple of the channel baseline
 MIN_BASELINE_SAMPLES = 4      # need at least this many comparable videos to trust a baseline
 AGE_BUCKET_TOLERANCE = 0.4    # compare against videos within +/-40% of the same age
+TRAILING_COMPARISON_VIDEOS = 15  # only compare against the channel's N most recently
+                                  # published videos in that age band, so the baseline
+                                  # tracks the channel's current scale, not its lifetime average
 CLAUDE_MODEL = "claude-sonnet-4-5"
 # -------------------------------------------------------------------------
 
@@ -207,8 +213,14 @@ def ensure_uploads_playlist(conn, channel_id, name, niche):
     return uploads_id
 
 
-def fetch_recent_video_ids(uploads_playlist_id, cutoff_iso):
-    video_ids = []
+def fetch_new_video_ids(uploads_playlist_id, known_ids, cutoff_iso=None):
+    """Pages through a channel's uploads (newest first) and returns only the
+    video IDs we haven't already got in the database. Stops as soon as it hits
+    a video we already know about - since uploads are newest-first, everything
+    after that point is already known too, so there's no need to keep paging.
+    This keeps ongoing runs cheap no matter how big a channel's back catalogue is.
+    If cutoff_iso is set (from a channel's 'since' date), it also stops there."""
+    new_ids = []
     page_token = None
     while True:
         data = yt_get(
@@ -217,15 +229,24 @@ def fetch_recent_video_ids(uploads_playlist_id, cutoff_iso):
         )
         stop = False
         for item in data.get("items", []):
+            vid = item["contentDetails"]["videoId"]
             published_at = item["contentDetails"].get("videoPublishedAt")
-            if published_at and published_at < cutoff_iso:
+            if vid in known_ids:
                 stop = True
-                continue
-            video_ids.append(item["contentDetails"]["videoId"])
+                break
+            if cutoff_iso and published_at and published_at < cutoff_iso:
+                stop = True
+                break
+            new_ids.append(vid)
         page_token = data.get("nextPageToken")
         if not page_token or stop:
             break
-    return video_ids
+    return new_ids
+
+
+def get_known_video_ids(conn, channel_id):
+    rows = conn.execute("SELECT video_id FROM videos WHERE channel_id=?", (channel_id,)).fetchall()
+    return {r[0] for r in rows}
 
 
 def fetch_stats(video_ids):
@@ -266,22 +287,32 @@ def record_snapshot(conn, vid, view_count, days_since_upload, now_iso):
 
 
 def compute_baseline(conn, channel_id, video_id, days_since_upload):
-    """Median velocity of this channel's other videos at a similar age, excluding
-    anything currently flagged as an outlier (so one hit doesn't drag up the bar)."""
+    """Median velocity of this channel's TRAILING_COMPARISON_VIDEOS most recently
+    published videos at a similar age, excluding anything currently flagged as an
+    outlier (so one hit doesn't drag up the bar). Comparing against only the most
+    recently published comparable videos - not the channel's whole history - means
+    the baseline tracks where the channel is *now*, not a blended lifetime average
+    that undersells how much a growing channel's "normal" has moved."""
     lo = days_since_upload * (1 - AGE_BUCKET_TOLERANCE)
     hi = days_since_upload * (1 + AGE_BUCKET_TOLERANCE)
     rows = conn.execute(
         """
-        SELECT s.velocity FROM snapshots s
+        SELECT s.velocity FROM (
+            SELECT s2.video_id, MAX(s2.checked_at) AS latest_checked
+            FROM snapshots s2
+            JOIN videos v2 ON v2.video_id = s2.video_id
+            LEFT JOIN outlier_state o2 ON o2.video_id = s2.video_id
+            WHERE v2.channel_id = ? AND s2.video_id != ?
+              AND s2.days_since_upload BETWEEN ? AND ?
+              AND (o2.is_outlier IS NULL OR o2.is_outlier = 0)
+            GROUP BY s2.video_id
+        ) latest
+        JOIN snapshots s ON s.video_id = latest.video_id AND s.checked_at = latest.latest_checked
         JOIN videos v ON v.video_id = s.video_id
-        LEFT JOIN outlier_state o ON o.video_id = s.video_id
-        WHERE v.channel_id = ? AND s.video_id != ?
-          AND s.days_since_upload BETWEEN ? AND ?
-          AND (o.is_outlier IS NULL OR o.is_outlier = 0)
-        ORDER BY s.checked_at DESC
-        LIMIT 200
+        ORDER BY v.published_at DESC
+        LIMIT ?
         """,
-        (channel_id, video_id, lo, hi),
+        (channel_id, video_id, lo, hi, TRAILING_COMPARISON_VIDEOS),
     ).fetchall()
     velocities = [r[0] for r in rows]
     if len(velocities) < MIN_BASELINE_SAMPLES:
@@ -341,33 +372,37 @@ def resolve_all_channels(conn, entries):
     of {id, name, niche, since} dicts, resolving+caching each one against the API."""
     resolved = []
     for entry in entries:
-        ref = parse_channel_ref(entry)
-        if not ref:
-            print(f"WARN: couldn't parse channel entry: {entry}")
-            continue
-        channel_id, resolved_name = resolve_channel_id(conn, ref)
-        if not channel_id:
-            print(f"WARN: couldn't resolve channel for: {entry}")
-            continue
-        name = entry.get("name") or resolved_name or channel_id
-        niche = entry.get("niche", "uncategorized")
-        resolved.append({"id": channel_id, "name": name, "niche": niche, "since": entry.get("since")})
+        try:
+            ref = parse_channel_ref(entry)
+            if not ref:
+                print(f"WARN: couldn't parse channel entry: {entry}")
+                continue
+            channel_id, resolved_name = resolve_channel_id(conn, ref)
+            if not channel_id:
+                print(f"WARN: couldn't resolve channel for: {entry}")
+                continue
+            name = entry.get("name") or resolved_name or channel_id
+            niche = entry.get("niche", "uncategorized")
+            resolved.append({"id": channel_id, "name": name, "niche": niche, "since": entry.get("since")})
+        except Exception as e:
+            print(f"WARN: error resolving channel entry {entry} - {e}")
         time.sleep(0.05)
     return resolved
 
 
-def channel_cutoff(channel, default_cutoff_iso):
-    """A channel can override the default 90-day active window with its own
-    'since: YYYY-MM-DD' date, to backfill further into its catalogue."""
+def channel_cutoff(channel):
+    """A channel can set 'since: YYYY-MM-DD' in channels.yaml to only track its
+    videos from that date forward. Without it, there's no cutoff at all - the
+    channel's full history gets tracked and kept up to date forever."""
     since = channel.get("since")
     if not since:
-        return default_cutoff_iso
+        return None
     try:
         d = datetime.datetime.strptime(str(since), "%Y-%m-%d").replace(tzinfo=datetime.timezone.utc)
         return d.strftime("%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
-        print(f"WARN: couldn't parse 'since' date {since!r} for {channel.get('name')} - using default window")
-        return default_cutoff_iso
+        print(f"WARN: couldn't parse 'since' date {since!r} for {channel.get('name')} - tracking full history")
+        return None
 
 
 def main():
@@ -390,23 +425,33 @@ def main():
 
     now = datetime.datetime.now(datetime.timezone.utc)
     now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    cutoff_iso = (now - datetime.timedelta(days=ACTIVE_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     video_channel_map = {}
     all_video_ids = []
+    total_new = 0
 
     for channel in channels:
-        uploads_id = ensure_uploads_playlist(conn, channel["id"], channel["name"], channel["niche"])
-        if not uploads_id:
-            continue
-        vids = fetch_recent_video_ids(uploads_id, channel_cutoff(channel, cutoff_iso))
-        for v in vids:
-            video_channel_map[v] = channel["id"]
-        all_video_ids.extend(vids)
+        try:
+            uploads_id = ensure_uploads_playlist(conn, channel["id"], channel["name"], channel["niche"])
+            if not uploads_id:
+                continue
+            known_ids = get_known_video_ids(conn, channel["id"])
+            new_ids = fetch_new_video_ids(uploads_id, known_ids, channel_cutoff(channel))
+            total_new += len(new_ids)
+            # Track everything this channel has ever had, not just what's new this run -
+            # every video's view count gets refreshed below, regardless of age.
+            channel_video_ids = known_ids | set(new_ids)
+            for v in channel_video_ids:
+                video_channel_map[v] = channel["id"]
+            all_video_ids.extend(channel_video_ids)
+        except Exception as e:
+            # One problem channel (deleted, no uploads playlist, a transient API error,
+            # etc.) should never take the whole run down - log it and move on.
+            print(f"WARN: skipping channel {channel.get('name', channel.get('id'))} this run - {e}")
         time.sleep(0.05)
 
     all_video_ids = list(dict.fromkeys(all_video_ids))
-    print(f"Tracking {len(all_video_ids)} active videos across {len(channels)} channels")
+    print(f"Refreshing {len(all_video_ids)} videos ({total_new} new) across {len(channels)} channels")
 
     stats = fetch_stats(all_video_ids)
     channel_names = {c["id"]: c["name"] for c in channels}
