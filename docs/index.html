@@ -527,6 +527,7 @@ async function deleteChannel(index) {
   }
 }
 
+document.getElementById('addChannelBtn').onclick = addChannel;
 document.getElementById('manageToggle').onclick = () => {
   const body = document.getElementById('manageBody');
   body.hidden = !body.hidden;
