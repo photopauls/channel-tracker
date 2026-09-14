@@ -42,6 +42,9 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "PLACEHOLDER_TELEGRAM_CHAT
 OUTLIER_THRESHOLD = 1.75      # velocity must beat this multiple of the channel baseline
 MIN_BASELINE_SAMPLES = 4      # need at least this many comparable videos to trust a baseline
 AGE_BUCKET_TOLERANCE = 0.4    # compare against videos within +/-40% of the same age
+MIN_AGE_BUCKET_DAYS = 2.0     # ...but never a narrower window than +/-2 days, so brand-new
+                               # videos (a few hours old) still get compared against a
+                               # reasonable pool instead of an almost-zero-width bucket
 TRAILING_COMPARISON_VIDEOS = 15  # only compare against the channel's N most recently
                                   # published videos in that age band, so the baseline
                                   # tracks the channel's current scale, not its lifetime average
@@ -331,20 +334,32 @@ def record_snapshot(conn, vid, view_count, days_since_upload, now_iso):
 
 def compute_baseline(conn, channel_id, video_id, days_since_upload):
     """Median velocity of this channel's TRAILING_COMPARISON_VIDEOS most recently
-    published videos at a similar age, excluding anything currently flagged as an
-    outlier (so one hit doesn't drag up the bar). Comparing against only the most
-    recently published comparable videos - not the channel's whole history - means
-    the baseline tracks where the channel is *now*, not a blended lifetime average
-    that undersells how much a growing channel's "normal" has moved."""
-    lo = days_since_upload * (1 - AGE_BUCKET_TOLERANCE)
-    hi = days_since_upload * (1 + AGE_BUCKET_TOLERANCE)
+    published videos at a similar age, excluding anything flagged as an outlier as
+    of the *start of this run* (so one hit doesn't drag up the bar - see the
+    outlier_state_snapshot table set up in main(), which freezes last run's flags
+    for the whole of this run instead of reading live updates other videos in this
+    same run just made, which used to let one early false-positive cascade into
+    excluding more and more of the pool as the run went on). Comparing against
+    only the most recently published comparable videos - not the channel's whole
+    history - means the baseline tracks where the channel is *now*, not a blended
+    lifetime average that undersells how much a growing channel's "normal" has
+    moved.
+
+    The age band is +/-40% of the video's age, but never narrower than
+    MIN_AGE_BUCKET_DAYS - a percentage-only tolerance shrinks to almost nothing
+    for a video that's only hours old, which starved brand-new uploads of any
+    comparison pool at all and silently left them un-flagged no matter how well
+    they were doing."""
+    tolerance_days = max(days_since_upload * AGE_BUCKET_TOLERANCE, MIN_AGE_BUCKET_DAYS)
+    lo = days_since_upload - tolerance_days
+    hi = days_since_upload + tolerance_days
     rows = conn.execute(
         """
         SELECT s.velocity FROM (
             SELECT s2.video_id, MAX(s2.checked_at) AS latest_checked
             FROM snapshots s2
             JOIN videos v2 ON v2.video_id = s2.video_id
-            LEFT JOIN outlier_state o2 ON o2.video_id = s2.video_id
+            LEFT JOIN outlier_state_snapshot o2 ON o2.video_id = s2.video_id
             WHERE v2.channel_id = ? AND s2.video_id != ?
               AND s2.days_since_upload BETWEEN ? AND ?
               AND (o2.is_outlier IS NULL OR o2.is_outlier = 0)
@@ -453,6 +468,20 @@ def main():
     os.makedirs(os.path.dirname(DATA_JSON_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
+
+    # Freeze the outlier flags as they stood at the *start* of this run, in a temp
+    # table, and compute every baseline in this run against that frozen snapshot.
+    # Without this, compute_baseline() joined the live outlier_state table, which
+    # this same loop is also updating video-by-video - so whichever video happened
+    # to get processed (and flagged) first, for a channel, would knock itself out
+    # of the comparison pool for every video processed after it in the *same* run.
+    # For a channel with a thin pool (e.g. just backfilled), that could cascade
+    # until almost nothing was left to compare against, and everything downstream
+    # looked like an outlier. Freezing the snapshot up front makes every video in
+    # a run get judged against the same, stable baseline.
+    conn.execute("DROP TABLE IF EXISTS outlier_state_snapshot")
+    conn.execute("CREATE TEMP TABLE outlier_state_snapshot AS SELECT video_id, is_outlier FROM outlier_state")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_outlier_snap_vid ON outlier_state_snapshot(video_id)")
 
     entries = load_channel_entries()
     if not entries:
