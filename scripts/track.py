@@ -2,12 +2,14 @@
 YouTube channel tracker.
 
 Runs on a schedule (see .github/workflows/track.yml). Each run:
-  1. Pulls recent uploads for every channel in channels.yaml (YouTube Data API).
-  2. Records a views snapshot for every video still inside the active tracking window.
-  3. Computes each video's velocity (views per day since upload) and compares it to
+  1. Resolves every channel in channels.yaml (a pasted URL, or a raw channel ID)
+     to its real channel ID, caching the lookup so it only happens once per channel.
+  2. Pulls recent uploads for each channel (YouTube Data API).
+  3. Records a views snapshot for every video still inside the active tracking window.
+  4. Computes each video's velocity (views per day since upload) and compares it to
      that channel's own historical baseline at a similar age -> flags outliers.
-  4. Writes docs/data.json, the file the static dashboard (docs/index.html) reads.
-  5. If any video newly crossed the outlier threshold since the last run, batches
+  5. Writes docs/data.json, the file the static dashboard (docs/index.html) reads.
+  6. If any video newly crossed the outlier threshold since the last run, batches
      them into one Claude API call for a pattern digest, then sends a Telegram alert.
 
 All secrets are read from environment variables (set as GitHub Actions secrets).
@@ -16,11 +18,14 @@ filled in real keys.
 """
 
 import os
+import re
 import json
 import sqlite3
 import statistics
 import time
 import datetime
+from urllib.parse import urlparse
+
 import requests
 import yaml
 
@@ -43,6 +48,8 @@ DATA_JSON_PATH = os.path.join(ROOT, "docs", "data.json")
 CHANNELS_YAML = os.path.join(ROOT, "channels.yaml")
 
 YT_API = "https://www.googleapis.com/youtube/v3"
+
+TRAILING_SEGMENTS = ("videos", "about", "featured", "playlists", "community", "streams", "shorts")
 
 
 def init_db(conn):
@@ -73,15 +80,20 @@ def init_db(conn):
             is_outlier INTEGER DEFAULT 0,
             first_flagged_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS channel_lookup (
+            ref TEXT PRIMARY KEY,
+            channel_id TEXT,
+            resolved_name TEXT
+        );
         """
     )
     conn.commit()
 
 
-def load_channels():
+def load_channel_entries():
     with open(CHANNELS_YAML) as f:
         cfg = yaml.safe_load(f) or {}
-    return [c for c in cfg.get("channels", []) if c.get("id") and not c["id"].startswith("UCxxxx")]
+    return cfg.get("channels", []) or []
 
 
 def yt_get(path, params):
@@ -91,22 +103,105 @@ def yt_get(path, params):
     return r.json()
 
 
-def ensure_uploads_playlist(conn, channel):
-    cur = conn.execute("SELECT uploads_playlist_id FROM channels WHERE channel_id=?", (channel["id"],))
+def parse_channel_ref(entry):
+    """Figure out what kind of reference an entry gives us: a raw channel ID,
+    an @handle, or a legacy /c/ or /user/ vanity name."""
+    if entry.get("id"):
+        return {"type": "id", "value": entry["id"]}
+
+    url = (entry.get("url") or "").strip()
+    if not url:
+        return None
+
+    path = urlparse(url).path if "://" in url else url
+    parts = [p for p in path.strip("/").split("/") if p]
+    if parts and parts[-1].lower() in TRAILING_SEGMENTS:
+        parts = parts[:-1]
+    if not parts:
+        return None
+
+    first = parts[0]
+    if first == "channel" and len(parts) > 1:
+        return {"type": "id", "value": parts[1]}
+    if first.startswith("@"):
+        return {"type": "handle", "value": first}
+    if first in ("c", "user") and len(parts) > 1:
+        return {"type": "legacy", "value": parts[1]}
+    # bare handle with no leading @ and no slash, e.g. someone pasted just "BlackMensBeard"
+    if len(parts) == 1:
+        return {"type": "handle", "value": "@" + first.lstrip("@")}
+    return None
+
+
+def resolve_channel_id(conn, ref):
+    """Resolve a parsed reference to (channel_id, display_name), using a cached
+    lookup table so each channel only costs API quota once, ever."""
+    cache_key = f"{ref['type']}:{ref['value']}"
+    row = conn.execute(
+        "SELECT channel_id, resolved_name FROM channel_lookup WHERE ref=?", (cache_key,)
+    ).fetchone()
+    if row and row[0]:
+        return row[0], row[1]
+
+    channel_id, name = None, None
+
+    if ref["type"] == "id":
+        channel_id = ref["value"]
+        data = yt_get("channels", {"part": "snippet", "id": channel_id})
+        items = data.get("items", [])
+        if items:
+            name = items[0]["snippet"]["title"]
+
+    elif ref["type"] == "handle":
+        data = yt_get("channels", {"part": "snippet", "forHandle": ref["value"]})
+        items = data.get("items", [])
+        if items:
+            channel_id = items[0]["id"]
+            name = items[0]["snippet"]["title"]
+
+    elif ref["type"] == "legacy":
+        data = yt_get("channels", {"part": "snippet", "forUsername": ref["value"]})
+        items = data.get("items", [])
+        if items:
+            channel_id = items[0]["id"]
+            name = items[0]["snippet"]["title"]
+        else:
+            # Old /c/ vanity URLs aren't always real "usernames" - fall back to a
+            # search lookup. Costs more quota (100 units) so this only fires once
+            # per channel, ever, thanks to the cache above.
+            data = yt_get("search", {"part": "snippet", "q": ref["value"], "type": "channel", "maxResults": 1})
+            items = data.get("items", [])
+            if items:
+                channel_id = items[0]["snippet"]["channelId"]
+                name = items[0]["snippet"]["title"]
+
+    if channel_id:
+        conn.execute(
+            "INSERT OR REPLACE INTO channel_lookup (ref, channel_id, resolved_name) VALUES (?,?,?)",
+            (cache_key, channel_id, name),
+        )
+        conn.commit()
+    return channel_id, name
+
+
+def ensure_uploads_playlist(conn, channel_id, name, niche):
+    cur = conn.execute("SELECT uploads_playlist_id FROM channels WHERE channel_id=?", (channel_id,))
     row = cur.fetchone()
     if row and row[0]:
+        conn.execute("UPDATE channels SET name=?, niche=? WHERE channel_id=?", (name, niche, channel_id))
+        conn.commit()
         return row[0]
-    data = yt_get("channels", {"part": "contentDetails", "id": channel["id"]})
+    data = yt_get("channels", {"part": "contentDetails", "id": channel_id})
     items = data.get("items", [])
     if not items:
-        print(f"WARN: channel {channel['id']} not found")
+        print(f"WARN: channel {channel_id} not found")
         return None
     uploads_id = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
     conn.execute(
         """INSERT INTO channels (channel_id, name, niche, uploads_playlist_id) VALUES (?,?,?,?)
            ON CONFLICT(channel_id) DO UPDATE SET
              name=excluded.name, niche=excluded.niche, uploads_playlist_id=excluded.uploads_playlist_id""",
-        (channel["id"], channel.get("name", channel["id"]), channel.get("niche", "uncategorized"), uploads_id),
+        (channel_id, name, niche, uploads_id),
     )
     conn.commit()
     return uploads_id
@@ -241,15 +336,55 @@ def send_telegram(text):
         print(f"WARN: Telegram send failed: {e}")
 
 
+def resolve_all_channels(conn, entries):
+    """Turns channels.yaml entries (URLs, handles, or raw IDs) into a clean list
+    of {id, name, niche, since} dicts, resolving+caching each one against the API."""
+    resolved = []
+    for entry in entries:
+        ref = parse_channel_ref(entry)
+        if not ref:
+            print(f"WARN: couldn't parse channel entry: {entry}")
+            continue
+        channel_id, resolved_name = resolve_channel_id(conn, ref)
+        if not channel_id:
+            print(f"WARN: couldn't resolve channel for: {entry}")
+            continue
+        name = entry.get("name") or resolved_name or channel_id
+        niche = entry.get("niche", "uncategorized")
+        resolved.append({"id": channel_id, "name": name, "niche": niche, "since": entry.get("since")})
+        time.sleep(0.05)
+    return resolved
+
+
+def channel_cutoff(channel, default_cutoff_iso):
+    """A channel can override the default 90-day active window with its own
+    'since: YYYY-MM-DD' date, to backfill further into its catalogue."""
+    since = channel.get("since")
+    if not since:
+        return default_cutoff_iso
+    try:
+        d = datetime.datetime.strptime(str(since), "%Y-%m-%d").replace(tzinfo=datetime.timezone.utc)
+        return d.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        print(f"WARN: couldn't parse 'since' date {since!r} for {channel.get('name')} - using default window")
+        return default_cutoff_iso
+
+
 def main():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     os.makedirs(os.path.dirname(DATA_JSON_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
 
-    channels = load_channels()
+    entries = load_channel_entries()
+    if not entries:
+        print("No channels configured in channels.yaml yet - add some and re-run. Exiting.")
+        conn.close()
+        return
+
+    channels = resolve_all_channels(conn, entries)
     if not channels:
-        print("No real channels configured in channels.yaml yet - edit it and re-run. Exiting.")
+        print("None of the channels in channels.yaml could be resolved. Check the URLs and re-run.")
         conn.close()
         return
 
@@ -261,10 +396,10 @@ def main():
     all_video_ids = []
 
     for channel in channels:
-        uploads_id = ensure_uploads_playlist(conn, channel)
+        uploads_id = ensure_uploads_playlist(conn, channel["id"], channel["name"], channel["niche"])
         if not uploads_id:
             continue
-        vids = fetch_recent_video_ids(uploads_id, cutoff_iso)
+        vids = fetch_recent_video_ids(uploads_id, channel_cutoff(channel, cutoff_iso))
         for v in vids:
             video_channel_map[v] = channel["id"]
         all_video_ids.extend(vids)
@@ -274,8 +409,8 @@ def main():
     print(f"Tracking {len(all_video_ids)} active videos across {len(channels)} channels")
 
     stats = fetch_stats(all_video_ids)
-    channel_names = {c["id"]: c.get("name", c["id"]) for c in channels}
-    channel_niches = {c["id"]: c.get("niche", "uncategorized") for c in channels}
+    channel_names = {c["id"]: c["name"] for c in channels}
+    channel_niches = {c["id"]: c["niche"] for c in channels}
 
     new_outliers = []
     dashboard_rows = []
@@ -349,6 +484,7 @@ def main():
                 "videos": dashboard_rows,
                 "channels": sorted(set(r["channel_name"] for r in dashboard_rows)),
                 "niches": sorted(set(r["niche"] for r in dashboard_rows)),
+                "channel_count": len(channels),
             },
             f,
             indent=2,

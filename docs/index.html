@@ -4,84 +4,173 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Channel Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1115; --panel: #161922; --border: #262b38; --text: #e7e9ee;
-    --muted: #8b91a3; --accent: #4f8cff; --outlier: #ff9f43; --outlier-bg: #2a1f10;
+    --bg: #0b0d12; --panel: #12151d; --panel-2: #171b26; --border: #232838;
+    --text: #eef0f5; --muted: #838a9c; --accent: #5b8cff; --accent-soft: #1a2540;
+    --outlier: #ffa53e; --outlier-soft: #2c1d0c; --good: #38d996; --radius: 14px;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
-  header { padding: 20px 24px 8px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: var(--muted); font-size: 13px; }
-  .controls { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 24px; position: sticky; top: 0; background: var(--bg); z-index: 5; border-bottom: 1px solid var(--border); }
-  select, input[type=text] { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 13px; }
-  label.toggle { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 20px 24px 40px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
-  .card.outlier { border-color: var(--outlier); box-shadow: 0 0 0 1px var(--outlier); }
+  body {
+    margin: 0; background: radial-gradient(circle at top, #131722 0%, var(--bg) 55%);
+    color: var(--text); font-family: 'Inter', -apple-system, Segoe UI, Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  header { padding: 28px 28px 0; max-width: 1400px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .tagline { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 18px; min-width: 130px; flex: 1; }
+  .stat .num { font-size: 22px; font-weight: 800; }
+  .stat .num.outlier-num { color: var(--outlier); }
+  .stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+  .controls { max-width: 1400px; margin: 0 auto; padding: 0 28px 18px; display: flex; flex-wrap: wrap;
+    gap: 10px; align-items: center; position: sticky; top: 0; z-index: 10; background: var(--bg);
+    padding-top: 14px; border-bottom: 1px solid var(--border); }
+  input[type=search] { background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 14px; border-radius: 999px; font-size: 13px; width: 220px; font-family: inherit; }
+  input[type=search]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 10px 12px;
+    border-radius: 10px; font-size: 13px; font-family: inherit; }
+
+  .pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { background: var(--panel); border: 1px solid var(--border); color: var(--muted); font-size: 12px;
+    font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: .15s; white-space: nowrap; }
+  .pill:hover { border-color: var(--accent); color: var(--text); }
+  .pill.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  .toggle { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border);
+    padding: 9px 14px 9px 10px; border-radius: 999px; font-size: 13px; cursor: pointer; margin-left: auto; }
+  .switch { width: 34px; height: 19px; background: var(--border); border-radius: 999px; position: relative;
+    transition: .15s; flex-shrink: 0; }
+  .switch::after { content: ''; position: absolute; width: 15px; height: 15px; border-radius: 50%; background: white;
+    top: 2px; left: 2px; transition: .15s; }
+  input:checked + .switch { background: var(--outlier); }
+  input:checked + .switch::after { left: 17px; }
+  .toggle input { display: none; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px;
+    max-width: 1400px; margin: 0 auto; padding: 22px 28px 48px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; display: flex; flex-direction: column; transition: transform .15s, border-color .15s; }
+  .card:hover { transform: translateY(-2px); border-color: #34405e; }
+  .card.outlier { border-color: var(--outlier); box-shadow: 0 0 0 1px var(--outlier), 0 8px 24px -8px rgba(255,165,62,.25); }
+  .thumb-wrap { position: relative; }
   .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; }
-  .card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-  .title { font-size: 14px; line-height: 1.35; font-weight: 600; text-decoration: none; color: var(--text); }
+  .ribbon { position: absolute; top: 10px; left: 10px; background: var(--outlier); color: #1a1200; font-weight: 800;
+    font-size: 11px; padding: 4px 9px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .card-body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .title { font-size: 14px; line-height: 1.4; font-weight: 600; text-decoration: none; color: var(--text); }
   .title:hover { color: var(--accent); }
-  .meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
-  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--outlier-bg); color: var(--outlier); width: fit-content; }
-  .stats { font-size: 12px; color: var(--muted); display: flex; gap: 10px; }
-  .empty { padding: 60px 24px; text-align: center; color: var(--muted); }
+  .meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+  .meta .niche-tag { background: var(--panel-2); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+  .stats { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; margin-top: auto;
+    padding-top: 8px; border-top: 1px solid var(--border); }
+  .stats b { color: var(--text); font-weight: 600; }
+
+  .empty, .loading { max-width: 1400px; margin: 0 auto; padding: 80px 28px; text-align: center; color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Channel Tracker</h1>
-  <div class="sub" id="generated">Loading…</div>
+  <div class="tagline" id="tagline">Loading…</div>
+  <div class="stats-row" id="statsRow"></div>
 </header>
 
 <div class="controls">
+  <input type="search" id="search" placeholder="Search titles…">
   <select id="channelFilter"><option value="">All channels</option></select>
-  <select id="nicheFilter"><option value="">All niches</option></select>
   <select id="sortBy">
     <option value="published_desc">Newest first</option>
-    <option value="ratio_desc">Biggest outperformance first</option>
+    <option value="ratio_desc">Biggest outperformance</option>
     <option value="views_desc">Most views</option>
   </select>
-  <label class="toggle"><input type="checkbox" id="outliersOnly"> Outliers only</label>
+  <div class="pill-row" id="nichePills"></div>
+  <label class="toggle">
+    <input type="checkbox" id="outliersOnly">
+    <span class="switch"></span>
+    Outliers only
+  </label>
 </div>
 
 <div class="grid" id="grid"></div>
-<div class="empty" id="empty" style="display:none">No videos match these filters yet.</div>
+<div class="empty" id="empty" style="display:none">No videos match these filters.</div>
 
 <script>
 let DATA = { videos: [], channels: [], niches: [] };
+let activeNiche = "";
 
 async function load() {
   try {
     const res = await fetch('data.json', { cache: 'no-store' });
     DATA = await res.json();
   } catch (e) {
-    document.getElementById('generated').textContent = 'No data yet — the tracker hasn\'t run yet.';
+    document.getElementById('tagline').textContent = "No data yet — the tracker hasn't run successfully yet.";
     return;
   }
-  document.getElementById('generated').textContent =
-    `${DATA.videos.length} videos tracked · last updated ${new Date(DATA.generated_at).toLocaleString()}`;
+
+  if (!DATA.generated_at) {
+    document.getElementById('tagline').textContent = "No data yet — waiting on the first tracker run.";
+    return;
+  }
+
+  const outlierCount = DATA.videos.filter(v => v.is_outlier).length;
+  document.getElementById('tagline').textContent =
+    `Last updated ${new Date(DATA.generated_at).toLocaleString()}`;
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><div class="num">${DATA.channel_count ?? DATA.channels.length}</div><div class="label">Channels tracked</div></div>
+    <div class="stat"><div class="num">${DATA.videos.length}</div><div class="label">Videos in window</div></div>
+    <div class="stat"><div class="num outlier-num">${outlierCount}</div><div class="label">Current outliers</div></div>
+    <div class="stat"><div class="num">${DATA.niches.length}</div><div class="label">Niches</div></div>
+  `;
 
   const chSel = document.getElementById('channelFilter');
   DATA.channels.forEach(c => chSel.add(new Option(c, c)));
-  const niSel = document.getElementById('nicheFilter');
-  DATA.niches.forEach(n => niSel.add(new Option(n, n)));
 
+  const pillRow = document.getElementById('nichePills');
+  pillRow.innerHTML = '';
+  const allPill = document.createElement('div');
+  allPill.className = 'pill active';
+  allPill.textContent = 'All niches';
+  allPill.onclick = () => setNiche('', allPill);
+  pillRow.appendChild(allPill);
+  DATA.niches.forEach(n => {
+    const p = document.createElement('div');
+    p.className = 'pill';
+    p.textContent = n;
+    p.onclick = () => setNiche(n, p);
+    pillRow.appendChild(p);
+  });
+
+  render();
+}
+
+function setNiche(niche, el) {
+  activeNiche = niche;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
   render();
 }
 
 function render() {
   const channel = document.getElementById('channelFilter').value;
-  const niche = document.getElementById('nicheFilter').value;
   const outliersOnly = document.getElementById('outliersOnly').checked;
   const sortBy = document.getElementById('sortBy').value;
+  const q = document.getElementById('search').value.trim().toLowerCase();
 
   let rows = DATA.videos.filter(v =>
     (!channel || v.channel_name === channel) &&
-    (!niche || v.niche === niche) &&
-    (!outliersOnly || v.is_outlier)
+    (!activeNiche || v.niche === activeNiche) &&
+    (!outliersOnly || v.is_outlier) &&
+    (!q || v.title.toLowerCase().includes(q))
   );
 
   if (sortBy === 'ratio_desc') rows.sort((a, b) => (b.ratio || 0) - (a.ratio || 0));
@@ -96,15 +185,17 @@ function render() {
     const card = document.createElement('div');
     card.className = 'card' + (v.is_outlier ? ' outlier' : '');
     card.innerHTML = `
-      <img class="thumb" src="${v.thumbnail}" loading="lazy" alt="">
+      <div class="thumb-wrap">
+        <img class="thumb" src="${v.thumbnail}" loading="lazy" alt="">
+        ${v.is_outlier ? `<span class="ribbon">${v.ratio}× baseline</span>` : ''}
+      </div>
       <div class="card-body">
-        ${v.is_outlier ? `<span class="badge">${v.ratio}× baseline</span>` : ''}
         <a class="title" href="${v.url}" target="_blank" rel="noopener">${escapeHtml(v.title)}</a>
-        <div class="meta"><span>${v.channel_name}</span><span>${v.niche}</span></div>
+        <div class="meta"><span>${escapeHtml(v.channel_name)}</span><span class="niche-tag">${escapeHtml(v.niche)}</span></div>
         <div class="stats">
-          <span>${v.views.toLocaleString()} views</span>
-          <span>${v.days_since_upload}d old</span>
-          <span>${v.velocity}/day</span>
+          <span><b>${v.views.toLocaleString()}</b> views</span>
+          <span><b>${v.days_since_upload}</b>d old</span>
+          <span><b>${v.velocity}</b>/day</span>
         </div>
       </div>`;
     grid.appendChild(card);
@@ -117,10 +208,9 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-['channelFilter', 'nicheFilter', 'sortBy'].forEach(id =>
-  document.getElementById(id).addEventListener('change', render)
-);
+['channelFilter', 'sortBy'].forEach(id => document.getElementById(id).addEventListener('change', render));
 document.getElementById('outliersOnly').addEventListener('change', render);
+document.getElementById('search').addEventListener('input', render);
 
 load();
 </script>

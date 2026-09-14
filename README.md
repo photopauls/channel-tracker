@@ -114,4 +114,3 @@ All the knobs are at the top of `scripts/track.py`:
 - The dashboard is a plain static site with no build step — open
   `docs/index.html` in a browser locally too, as long as `docs/data.json`
   sits next to it.
-"# channel-tracker" 

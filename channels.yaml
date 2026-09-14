@@ -1,19 +1,31 @@
 # List every channel you want tracked here.
-# - id: the channel's YouTube channel ID (starts with "UC...", NOT the @handle)
-#     Find it by opening the channel, "About" tab -> "Share channel" -> "Copy channel ID",
-#     or view page source and search for "channelId".
-# - name: whatever you want to see on the dashboard / in alerts
-# - niche: your own grouping label (used to spot cross-niche patterns) - keep these consistent
+#
+# Just paste the channel's URL — any format works: /@handle, /@handle/videos,
+# /channel/UC..., or an old /c/Name or /user/Name link. The script resolves it
+# to the channel's real ID automatically on first run and caches the result,
+# so you never have to go hunting for channel IDs by hand.
+#
+# - url: the channel URL, pasted as-is
+# - niche: your own grouping label (used for the dashboard filter and for
+#     spotting cross-niche patterns) - keep these consistent, e.g. always
+#     "hairloss" not sometimes "hair-loss"
+# - name: optional — if you leave it out, the script fills it in from
+#     YouTube automatically the first time it resolves the channel
+# - since: optional — defaults to the last 90 days. Set this to a date
+#     ("YYYY-MM-DD") to backfill that channel's whole catalogue back to that
+#     date instead, e.g. to pull in years of back catalogue for a channel you
+#     really want to mine for patterns. Leave it out for everything else.
 
 channels:
-  - id: "UCxxxxxxxxxxxxxxxxxxxxxx"
-    name: "Chuff Reacts"
-    niche: "football-reactions"
-  - id: "UCyyyyyyyyyyyyyyyyyyyyyy"
-    name: "Your Boy B"
-    niche: "hair-loss"
-  - id: "UCzzzzzzzzzzzzzzzzzzzzzz"
-    name: "Example Ecom Channel"
-    niche: "ecom-education"
+  - url: "https://www.youtube.com/@BlackMensBeard/videos"
+    niche: "hairloss"
+  # Example of a deeper backfill for one specific channel:
+  # - url: "https://www.youtube.com/@SomeChannel"
+  #   niche: "hairloss"
+  #   since: "2023-01-01"
 
-# Add the rest of your ~50-150 channels below in the same format.
+# Add the rest of your ~50-150 channels below, one per line, e.g.:
+#  - url: "https://www.youtube.com/@SomeOtherChannel"
+#    niche: "hairloss"
+#  - url: "https://www.youtube.com/@AnEcomChannel/videos"
+#    niche: "ecom"
