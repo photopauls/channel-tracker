@@ -74,9 +74,11 @@
   .channel-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
   .channel-row { display: flex; align-items: center; gap: 10px; background: var(--panel-2); border: 1px solid var(--border);
     border-radius: 10px; padding: 8px 12px; font-size: 13px; }
-  .channel-row-main { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .channel-row-main { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 90px; }
   .channel-row-niche { color: var(--muted); font-size: 12px; background: var(--panel); padding: 2px 8px; border-radius: 999px; }
-  .del-btn { padding: 6px 12px; font-size: 12px; }
+  .niche-input { width: 130px; padding: 6px 10px; font-size: 12px; border-radius: 999px; }
+  .save-niche-btn, .del-btn { padding: 6px 12px; font-size: 12px; }
+  .save-niche-btn:disabled { opacity: .4; cursor: default; }
   .manage-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px;
@@ -99,6 +101,8 @@
   .title:hover { color: var(--accent); }
   .meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
   .meta .niche-tag { background: var(--panel-2); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+  .meta .channel-link { cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta .channel-link:hover { color: var(--text); text-decoration: underline; }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: auto;
     padding-top: 10px; border-top: 1px solid var(--border); }
   .stat-item { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -166,6 +170,7 @@
     </div>
 
     <div class="manage-msg" id="manageMsg"></div>
+    <datalist id="nicheOptions"></datalist>
     <div class="channel-list" id="channelList"></div>
   </div>
 </div>
@@ -313,7 +318,7 @@ function paintGrid() {
       </div>
       <div class="card-body">
         <a class="title" href="${v.url}" target="_blank" rel="noopener">${escapeHtml(v.title)}</a>
-        <div class="meta"><span>${escapeHtml(v.channel_name)}</span><span class="niche-tag">${escapeHtml(v.niche)}</span></div>
+        <div class="meta"><span class="channel-link" data-channel="${escapeHtml(v.channel_name)}" title="View only this channel">${escapeHtml(v.channel_name)}</span><span class="niche-tag">${escapeHtml(v.niche)}</span></div>
         <div class="stats">
           <div class="stat-item"><span class="val">${v.views.toLocaleString()}</span><span class="lbl">Views</span></div>
           <div class="stat-item"><span class="val">${v.days_since_upload}d</span><span class="lbl">Old</span></div>
@@ -359,7 +364,13 @@ document.getElementById('favoritesOnly').addEventListener('change', render);
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('grid').addEventListener('click', (e) => {
   const btn = e.target.closest('.fav-btn');
-  if (btn) { e.preventDefault(); toggleFavorite(btn.dataset.vid); }
+  if (btn) { e.preventDefault(); toggleFavorite(btn.dataset.vid); return; }
+  const link = e.target.closest('.channel-link');
+  if (link) {
+    document.getElementById('channelFilter').value = link.dataset.channel;
+    render();
+    document.querySelector('.controls').scrollIntoView({ behavior: 'instant', block: 'start' });
+  }
 });
 
 // ---- manage channels (reads/writes channels.yaml on GitHub directly) ----
@@ -424,19 +435,53 @@ async function refreshChannelList() {
   try {
     const { parsed } = await ghGetFile();
     const channels = parsed.channels;
+
+    const niches = [...new Set(channels.map(c => c.niche).filter(Boolean))].sort();
+    document.getElementById('nicheOptions').innerHTML = niches.map(n => `<option value="${escapeHtml(n)}">`).join('');
+
     listEl.innerHTML = channels.length ? channels.map((c, i) => `
       <div class="channel-row">
         <span class="channel-row-main">${escapeHtml(c.name || c.url || c.id || '(unnamed)')}</span>
-        <span class="channel-row-niche">${escapeHtml(c.niche || '')}</span>
+        <input class="niche-input" list="nicheOptions" data-index="${i}" value="${escapeHtml(c.niche || '')}">
+        <button class="save-niche-btn" data-index="${i}" disabled>Save</button>
         <button class="del-btn danger" data-index="${i}">Remove</button>
       </div>`).join('') : '<div class="manage-empty">No channels yet.</div>';
+
     listEl.querySelectorAll('.del-btn').forEach(btn => {
       btn.onclick = () => deleteChannel(parseInt(btn.dataset.index, 10));
+    });
+    listEl.querySelectorAll('.niche-input').forEach(input => {
+      const saveBtn = listEl.querySelector(`.save-niche-btn[data-index="${input.dataset.index}"]`);
+      input.addEventListener('input', () => { saveBtn.disabled = false; });
+    });
+    listEl.querySelectorAll('.save-niche-btn').forEach(btn => {
+      btn.onclick = () => saveNiche(parseInt(btn.dataset.index, 10), btn);
     });
     msgEl.textContent = '';
   } catch (e) {
     listEl.innerHTML = '';
     msgEl.textContent = 'Could not load channels.yaml: ' + e.message;
+  }
+}
+
+async function saveNiche(index, btn) {
+  const msgEl = document.getElementById('manageMsg');
+  const input = document.querySelector(`.niche-input[data-index="${index}"]`);
+  const niche = input.value.trim();
+  if (!niche) { msgEl.textContent = 'Niche cannot be empty.'; return; }
+  btn.disabled = true;
+  msgEl.textContent = 'Saving…';
+  try {
+    const { parsed, sha } = await ghGetFile();
+    if (!parsed.channels[index]) throw new Error('Channel list changed since this loaded - reopen the panel and try again.');
+    const name = parsed.channels[index].name || parsed.channels[index].url || 'channel';
+    parsed.channels[index].niche = niche;
+    await ghPutFile(parsed, sha, `Retag channel: ${name} -> ${niche}`);
+    msgEl.textContent = "Saved. It'll show up on the dashboard after the next tracker run.";
+    refreshChannelList();
+  } catch (e) {
+    msgEl.textContent = 'Failed to save niche: ' + e.message;
+    btn.disabled = false;
   }
 }
 
