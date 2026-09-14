@@ -1,0 +1,19 @@
+# List every channel you want tracked here.
+# - id: the channel's YouTube channel ID (starts with "UC...", NOT the @handle)
+#     Find it by opening the channel, "About" tab -> "Share channel" -> "Copy channel ID",
+#     or view page source and search for "channelId".
+# - name: whatever you want to see on the dashboard / in alerts
+# - niche: your own grouping label (used to spot cross-niche patterns) - keep these consistent
+
+channels:
+  - id: "UCxxxxxxxxxxxxxxxxxxxxxx"
+    name: "Chuff Reacts"
+    niche: "football-reactions"
+  - id: "UCyyyyyyyyyyyyyyyyyyyyyy"
+    name: "Your Boy B"
+    niche: "hair-loss"
+  - id: "UCzzzzzzzzzzzzzzzzzzzzzz"
+    name: "Example Ecom Channel"
+    niche: "ecom-education"
+
+# Add the rest of your ~50-150 channels below in the same format.

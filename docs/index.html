@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Channel Tracker</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #161922; --border: #262b38; --text: #e7e9ee;
+    --muted: #8b91a3; --accent: #4f8cff; --outlier: #ff9f43; --outlier-bg: #2a1f10;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
+  header { padding: 20px 24px 8px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 24px; position: sticky; top: 0; background: var(--bg); z-index: 5; border-bottom: 1px solid var(--border); }
+  select, input[type=text] { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 13px; }
+  label.toggle { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 20px 24px 40px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .card.outlier { border-color: var(--outlier); box-shadow: 0 0 0 1px var(--outlier); }
+  .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; }
+  .card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .title { font-size: 14px; line-height: 1.35; font-weight: 600; text-decoration: none; color: var(--text); }
+  .title:hover { color: var(--accent); }
+  .meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--outlier-bg); color: var(--outlier); width: fit-content; }
+  .stats { font-size: 12px; color: var(--muted); display: flex; gap: 10px; }
+  .empty { padding: 60px 24px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Channel Tracker</h1>
+  <div class="sub" id="generated">Loading…</div>
+</header>
+
+<div class="controls">
+  <select id="channelFilter"><option value="">All channels</option></select>
+  <select id="nicheFilter"><option value="">All niches</option></select>
+  <select id="sortBy">
+    <option value="published_desc">Newest first</option>
+    <option value="ratio_desc">Biggest outperformance first</option>
+    <option value="views_desc">Most views</option>
+  </select>
+  <label class="toggle"><input type="checkbox" id="outliersOnly"> Outliers only</label>
+</div>
+
+<div class="grid" id="grid"></div>
+<div class="empty" id="empty" style="display:none">No videos match these filters yet.</div>
+
+<script>
+let DATA = { videos: [], channels: [], niches: [] };
+
+async function load() {
+  try {
+    const res = await fetch('data.json', { cache: 'no-store' });
+    DATA = await res.json();
+  } catch (e) {
+    document.getElementById('generated').textContent = 'No data yet — the tracker hasn\'t run yet.';
+    return;
+  }
+  document.getElementById('generated').textContent =
+    `${DATA.videos.length} videos tracked · last updated ${new Date(DATA.generated_at).toLocaleString()}`;
+
+  const chSel = document.getElementById('channelFilter');
+  DATA.channels.forEach(c => chSel.add(new Option(c, c)));
+  const niSel = document.getElementById('nicheFilter');
+  DATA.niches.forEach(n => niSel.add(new Option(n, n)));
+
+  render();
+}
+
+function render() {
+  const channel = document.getElementById('channelFilter').value;
+  const niche = document.getElementById('nicheFilter').value;
+  const outliersOnly = document.getElementById('outliersOnly').checked;
+  const sortBy = document.getElementById('sortBy').value;
+
+  let rows = DATA.videos.filter(v =>
+    (!channel || v.channel_name === channel) &&
+    (!niche || v.niche === niche) &&
+    (!outliersOnly || v.is_outlier)
+  );
+
+  if (sortBy === 'ratio_desc') rows.sort((a, b) => (b.ratio || 0) - (a.ratio || 0));
+  else if (sortBy === 'views_desc') rows.sort((a, b) => b.views - a.views);
+  else rows.sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+
+  for (const v of rows) {
+    const card = document.createElement('div');
+    card.className = 'card' + (v.is_outlier ? ' outlier' : '');
+    card.innerHTML = `
+      <img class="thumb" src="${v.thumbnail}" loading="lazy" alt="">
+      <div class="card-body">
+        ${v.is_outlier ? `<span class="badge">${v.ratio}× baseline</span>` : ''}
+        <a class="title" href="${v.url}" target="_blank" rel="noopener">${escapeHtml(v.title)}</a>
+        <div class="meta"><span>${v.channel_name}</span><span>${v.niche}</span></div>
+        <div class="stats">
+          <span>${v.views.toLocaleString()} views</span>
+          <span>${v.days_since_upload}d old</span>
+          <span>${v.velocity}/day</span>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  }
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+['channelFilter', 'nicheFilter', 'sortBy'].forEach(id =>
+  document.getElementById(id).addEventListener('change', render)
+);
+document.getElementById('outliersOnly').addEventListener('change', render);
+
+load();
+</script>
+</body>
+</html>

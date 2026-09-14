@@ -1,0 +1,39 @@
+name: Track YouTube Channels
+
+on:
+  schedule:
+    # Every 6 hours. Edit the cron below to change frequency (fine to go hourly -
+    # YouTube's free quota easily covers even 150 channels at this rate).
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r scripts/requirements.txt
+
+      - name: Run tracker
+        run: python scripts/track.py
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Commit updated data
+        run: |
+          git config user.name "channel-tracker-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/tracker.db docs/data.json
+          git diff --cached --quiet || git commit -m "Update tracker data [skip ci]"
+          git push
