@@ -1,489 +1,463 @@
-# List every channel you want tracked here.
-#
-# Just paste the channel's URL — any format works: /@handle, /@handle/videos,
-# /channel/UC..., or an old /c/Name or /user/Name link. The script resolves it
-# to the channel's real ID automatically on first run and caches the result,
-# so you never have to go hunting for channel IDs by hand.
-#
-# - url: the channel URL, pasted as-is
-# - niche: your own grouping label (used for the dashboard filter and for
-#     spotting cross-niche patterns) - keep these consistent, e.g. always
-#     "hairloss" not sometimes "hair-loss"
-# - name: optional — if you leave it out, the script fills it in from
-#     YouTube automatically the first time it resolves the channel
-# - since: optional — leave it out to track a channel's ENTIRE history.
-#     Set it to a date ("YYYY-MM-DD") to limit that one channel to only its
-#     videos from that date forward instead.
+# Managed by the dashboard's "Manage channels" panel - also editable by hand.
+# Paste a channel URL (any format: @handle, /channel/UC..., /c/Name, /user/Name).
+# niche = your grouping label. name is optional (auto-filled from YouTube if left out).
+# since: YYYY-MM-DD is optional - limits that one channel to videos from that date forward;
+# leave it out to track a channel's entire history.
 
 channels:
-  - url: "https://www.youtube.com/@BlackMensBeard/videos"
-    niche: "hairloss"
-
-  # ---- hairloss ----
-  - url: "https://www.youtube.com/@washngoway/videos"
-    niche: "hairloss"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@WilliamGaunitzTrichologist"
-    niche: "hairloss"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TheHairLossShow/videos"
-    niche: "hairloss"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@algarrido/videos"
-    niche: "hairloss"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@nakatrichology/videos"
-    niche: "hairloss"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@mister-hairline"
-    niche: "hairloss"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Hairguard/videos"
-    niche: "hairloss"
-    since: "2025-09-14"
-
-  # ---- health ----
-  - url: "https://www.youtube.com/@Paulsaladinomd"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@ThomasDeLauerOfficial/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@drjoshaxe/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@KetoKamp/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DaveAspreyBPR/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DrDavidJockers"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TheBloodPressureDoc"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DrKaran"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DoctorMikeDiamonds/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@drekberg/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@danfounder/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Movesmethod"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@RyanHumiston/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@BryanJohnson"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UC3w193M5tYPJqF0Hi-7U-2g"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DrBobbyPrice/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@dr.vivekjoshi06/videos"
-    niche: "health"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@motivationaldoc/videos"
-    niche: "health"
-    since: "2025-09-14"
-  # skipped: https://www.youtube.com/watch?v=iIc7wYm6kYs - that's a single video link,
-  # not a channel link, so it can't be resolved. Grab that video's channel URL instead.
-
-  # ---- competitors ----
-  - url: "https://www.youtube.com/@tintinsmith"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@nolanmolt"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@SunnyLenarduzzi"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@WesMcDowellInc"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@creativedirectorsco/videos"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@ed-lawrence/videos"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@JamieOwers"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@lindenchasteenyt"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UCghUKUzVfDNjKQhXN9qI-JA"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UCzBJJVvAsiw_mGDYzBns8Dg/videos"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@creatorllaunch"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@jackhandvideo/videos"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@jamie_rawsthorne"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@AjenePinnock/videos"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@theaymanarab/videos"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@RaviAbuvala"
-    niche: "competitors"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TakiMoore"
-    niche: "competitors"
-    since: "2025-09-14"
-
-  # ---- competitors-l ("Competitors (L)") ----
-  - url: "https://www.youtube.com/@SubsToSales/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@EmekaEkwuribeBusiness"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UCmBXuwIH3t5Re4vX9UTFLkQ"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@LukeScripted"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@mariuswith"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@matevz_semprimoznik"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UCY0cSLgsSFrtpBRD9IvfHcw"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@shanehummuscontentgrowthengine"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TrenaLittle"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Kyler_Miles"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@benbranding"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@athletecreative"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Mihir_Narula"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@theShazM"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Victoria.video.marketer/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@jackgaisford"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@kennybender3"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Cataralane/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@gregmiroslaw/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Brett_Fully"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@mauriciogrowth/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@NatashaTheresav2/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@GabeBultTheProcess/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@theharut/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@MollyKeyser/videos"
-    niche: "competitors-l"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@ThisIsVirginiaKerr"
-    niche: "competitors-l"
-    since: "2025-09-14"
-
-  # ---- business ----
-  - url: "https://www.youtube.com/@AhrefsCom"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@aliabdaal"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@riandoris"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@AlexHormozi"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@CodieSanchezCT"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DanKoeTalks"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UCxV_DtAUhJS-XdsalMUCJoQ"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UCo7OTCTPwlPFmMOeRPJMQ0Q"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@AnthonyVicino"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@ruriohama"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/channel/UCKQvGU-qtjEthINeViNbn6A"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@AdamEnfroy"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@samovenstv"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@SeanDollwet"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@danbolton3080/videos"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Baddieinbiz"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@leevieerola/videos"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@thenickmassa"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TheBrettWay"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TomYoungsChannel"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@charliemofficial"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@itsrosehan/videos"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@ryan-mathews/videos"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@sooweigohbiz/videos"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@sooweigoh/videos"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@AlexMHSmith"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@wbarron"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@joanna-wiebe/videos"
-    niche: "business"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@danmartell"
-    niche: "business"
-    since: "2025-09-14"
-  # skipped: https://www.youtube.com/watch?v=yoateM1QeFU and
-  # https://www.youtube.com/watch?v=gnS-TIfivWk - both single video links, not channel
-  # links, so they can't be resolved. Grab those videos' channel URLs instead.
-
-  # ---- random ----
-  - url: "https://www.youtube.com/@fivebynine"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@JustinSung"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@realmattgray"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@bycrawford"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@MyNameIsDeya"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@AbiChampion"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@adhdvision/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@AlexanderTheCreate"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@athleanx/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@awaytogether/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@BrandonShep/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@CalebRalston/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Charles_Duhigg"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@coachdango"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/c/DarkLabelMusicDanielGrimmett"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@EmmaHubbard/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@finzar"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Foureyes.Furniture/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@garyvee/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@gmbfit"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@heyDominik/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@indymogul/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@InstantlyAI/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@JamesShack/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@JamesSmithBusiness/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@JeffSu"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@JeremyHaynesTraining/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@justinhickox/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@juxtopposed/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Laraacosta"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@LaylaPomper"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Lincolnstww/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Livinleggings/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@OliurOnline/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@patrickzeinali/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@RexKrueger/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@ronnymitchellmedia"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TheRossHarkness"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@RyanDeissOfficial/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@SamMartinPeakPerformance/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@SamPiliero/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@SandeepSwadia/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@SarahRenaeClark/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DrSeanOMara/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@MindBodyHorizons/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/squatuniversity"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@Swiftfilmsuk/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@DrTessaDamm/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@theMITmonk"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TimKoa/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@tjpowertalks/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@TonioGuajardo/videos"
-    niche: "random"
-    since: "2025-09-14"
-  - url: "https://www.youtube.com/@VincentChan/videos"
-    niche: "random"
-    since: "2025-09-14"
-  # skipped: https://www.youtube.com/watch?v=-kfWTbJOxHI - that's a single video link,
-  # not a channel link, so it can't be resolved. Grab that video's channel URL instead.
+  - url: https://www.youtube.com/@BlackMensBeard/videos
+    niche: hairloss
+  - url: https://www.youtube.com/@washngoway/videos
+    niche: hairloss
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@WilliamGaunitzTrichologist
+    niche: hairloss
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TheHairLossShow/videos
+    niche: hairloss
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@algarrido/videos
+    niche: hairloss
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@nakatrichology/videos
+    niche: hairloss
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@mister-hairline
+    niche: hairloss
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Hairguard/videos
+    niche: hairloss
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Paulsaladinomd
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@ThomasDeLauerOfficial/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@drjoshaxe/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@KetoKamp/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DaveAspreyBPR/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DrDavidJockers
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TheBloodPressureDoc
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DrKaran
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DoctorMikeDiamonds/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@drekberg/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@danfounder/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Movesmethod
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@RyanHumiston/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@BryanJohnson
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UC3w193M5tYPJqF0Hi-7U-2g
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DrBobbyPrice/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@dr.vivekjoshi06/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@motivationaldoc/videos
+    niche: health
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@tintinsmith
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@nolanmolt
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@SunnyLenarduzzi
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@WesMcDowellInc
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@creativedirectorsco/videos
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@ed-lawrence/videos
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@JamieOwers
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@lindenchasteenyt
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UCghUKUzVfDNjKQhXN9qI-JA
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UCzBJJVvAsiw_mGDYzBns8Dg/videos
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@creatorllaunch
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@jackhandvideo/videos
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@jamie_rawsthorne
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AjenePinnock/videos
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@theaymanarab/videos
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@RaviAbuvala
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TakiMoore
+    niche: competitors
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@SubsToSales/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@EmekaEkwuribeBusiness
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UCmBXuwIH3t5Re4vX9UTFLkQ
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@LukeScripted
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@mariuswith
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@matevz_semprimoznik
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UCY0cSLgsSFrtpBRD9IvfHcw
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@shanehummuscontentgrowthengine
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TrenaLittle
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Kyler_Miles
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@benbranding
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@athletecreative
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Mihir_Narula
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@theShazM
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Victoria.video.marketer/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@jackgaisford
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@kennybender3
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Cataralane/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@gregmiroslaw/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Brett_Fully
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@mauriciogrowth/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@NatashaTheresav2/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@GabeBultTheProcess/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@theharut/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@MollyKeyser/videos
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@ThisIsVirginiaKerr
+    niche: competitors-l
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AhrefsCom
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@aliabdaal
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@riandoris
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AlexHormozi
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@CodieSanchezCT
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DanKoeTalks
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UCxV_DtAUhJS-XdsalMUCJoQ
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UCo7OTCTPwlPFmMOeRPJMQ0Q
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AnthonyVicino
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@ruriohama
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/channel/UCKQvGU-qtjEthINeViNbn6A
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AdamEnfroy
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@samovenstv
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@SeanDollwet
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@danbolton3080/videos
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Baddieinbiz
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@leevieerola/videos
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@thenickmassa
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TheBrettWay
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TomYoungsChannel
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@charliemofficial
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@itsrosehan/videos
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@ryan-mathews/videos
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@sooweigohbiz/videos
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@sooweigoh/videos
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AlexMHSmith
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@wbarron
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@joanna-wiebe/videos
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@danmartell
+    niche: business
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@fivebynine
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@JustinSung
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@realmattgray
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@bycrawford
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@MyNameIsDeya
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AbiChampion
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@adhdvision/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@AlexanderTheCreate
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@athleanx/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@awaytogether/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@BrandonShep/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@CalebRalston/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Charles_Duhigg
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@coachdango
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/c/DarkLabelMusicDanielGrimmett
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@EmmaHubbard/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@finzar
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Foureyes.Furniture/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@garyvee/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@gmbfit
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@heyDominik/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@indymogul/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@InstantlyAI/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@JamesShack/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@JamesSmithBusiness/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@JeffSu
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@JeremyHaynesTraining/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@justinhickox/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@juxtopposed/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Laraacosta
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@LaylaPomper
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Lincolnstww/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Livinleggings/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@OliurOnline/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@patrickzeinali/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@RexKrueger/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@ronnymitchellmedia
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TheRossHarkness
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@RyanDeissOfficial/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@SamMartinPeakPerformance/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@SamPiliero/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@SandeepSwadia/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@SarahRenaeClark/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DrSeanOMara/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@MindBodyHorizons/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/squatuniversity
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@Swiftfilmsuk/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@DrTessaDamm/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@theMITmonk
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TimKoa/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@tjpowertalks/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@TonioGuajardo/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@VincentChan/videos
+    niche: random
+    since: '2025-09-14'
+  - url: https://www.youtube.com/@CalebRalston/videos
+    niche: business
+    name: Caleb Ralston
+    since: '2025-09-14'
