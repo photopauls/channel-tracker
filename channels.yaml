@@ -17,12 +17,18 @@
 #     really want to mine for patterns. Leave it out for everything else.
 
 channels:
+<<<<<<< HEAD
   - url: "https://www.youtube.com/@BlackMensBeard/videos"
     niche: "hairloss"
   # Example of a deeper backfill for one specific channel:
   # - url: "https://www.youtube.com/@SomeChannel"
   #   niche: "hairloss"
   #   since: "2023-01-01"
+=======
+  - id: "UC7kKFKme90zilijSwYlvwRQ"
+    name: "Black Men's Beard"
+    niche: "hairloss"
+>>>>>>> 17790e7f32d7ad358666bd636ccdee148550d17a
 
 # Add the rest of your ~50-150 channels below, one per line, e.g.:
 #  - url: "https://www.youtube.com/@SomeOtherChannel"

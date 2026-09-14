@@ -1,7 +1,107 @@
 {
-  "generated_at": null,
-  "videos": [],
-  "channels": [],
-  "niches": [],
-  "channel_count": 0
+  "generated_at": "2026-09-14T13:06:43Z",
+  "videos": [
+    {
+      "video_id": "kqkNexl6znE",
+      "title": "He was losing hair for 8 years (this is what stopped it)",
+      "channel_id": "UC7kKFKme90zilijSwYlvwRQ",
+      "channel_name": "Black Men's Beard",
+      "niche": "hairloss",
+      "thumbnail": "https://i.ytimg.com/vi/kqkNexl6znE/mqdefault.jpg",
+      "published_at": "2026-09-11T16:02:15Z",
+      "views": 5671,
+      "days_since_upload": 2.9,
+      "velocity": 1970.4,
+      "baseline": null,
+      "ratio": null,
+      "is_outlier": false,
+      "url": "https://www.youtube.com/watch?v=kqkNexl6znE"
+    },
+    {
+      "video_id": "OjsIBvVueOo",
+      "title": "I ranked EVERY hair loss treatment (science backed)",
+      "channel_id": "UC7kKFKme90zilijSwYlvwRQ",
+      "channel_name": "Black Men's Beard",
+      "niche": "hairloss",
+      "thumbnail": "https://i.ytimg.com/vi/OjsIBvVueOo/mqdefault.jpg",
+      "published_at": "2026-08-21T16:26:40Z",
+      "views": 10151,
+      "days_since_upload": 23.9,
+      "velocity": 425.4,
+      "baseline": null,
+      "ratio": null,
+      "is_outlier": false,
+      "url": "https://www.youtube.com/watch?v=OjsIBvVueOo"
+    },
+    {
+      "video_id": "VNMDdgLVUEg",
+      "title": "Jamaican black castor oil for FAST hair growth. Does it work?",
+      "channel_id": "UC7kKFKme90zilijSwYlvwRQ",
+      "channel_name": "Black Men's Beard",
+      "niche": "hairloss",
+      "thumbnail": "https://i.ytimg.com/vi/VNMDdgLVUEg/mqdefault.jpg",
+      "published_at": "2026-08-07T22:05:09Z",
+      "views": 11108,
+      "days_since_upload": 37.6,
+      "velocity": 295.2,
+      "baseline": null,
+      "ratio": null,
+      "is_outlier": false,
+      "url": "https://www.youtube.com/watch?v=VNMDdgLVUEg"
+    },
+    {
+      "video_id": "FL3Q1N46Rfw",
+      "title": "if I had 30 days to regrow my hair, I\u2019d do this",
+      "channel_id": "UC7kKFKme90zilijSwYlvwRQ",
+      "channel_name": "Black Men's Beard",
+      "niche": "hairloss",
+      "thumbnail": "https://i.ytimg.com/vi/FL3Q1N46Rfw/mqdefault.jpg",
+      "published_at": "2026-07-31T15:42:29Z",
+      "views": 3955,
+      "days_since_upload": 44.9,
+      "velocity": 88.1,
+      "baseline": null,
+      "ratio": null,
+      "is_outlier": false,
+      "url": "https://www.youtube.com/watch?v=FL3Q1N46Rfw"
+    },
+    {
+      "video_id": "W3oij9DpcI0",
+      "title": "I helped 500 men stop hair loss. (This is what works)",
+      "channel_id": "UC7kKFKme90zilijSwYlvwRQ",
+      "channel_name": "Black Men's Beard",
+      "niche": "hairloss",
+      "thumbnail": "https://i.ytimg.com/vi/W3oij9DpcI0/mqdefault.jpg",
+      "published_at": "2026-07-17T15:34:23Z",
+      "views": 37018,
+      "days_since_upload": 58.9,
+      "velocity": 628.5,
+      "baseline": null,
+      "ratio": null,
+      "is_outlier": false,
+      "url": "https://www.youtube.com/watch?v=W3oij9DpcI0"
+    },
+    {
+      "video_id": "9ojiFNFGAdU",
+      "title": "This \u201c2 hour window\u201d decides if your hair will REGROW",
+      "channel_id": "UC7kKFKme90zilijSwYlvwRQ",
+      "channel_name": "Black Men's Beard",
+      "niche": "hairloss",
+      "thumbnail": "https://i.ytimg.com/vi/9ojiFNFGAdU/mqdefault.jpg",
+      "published_at": "2026-06-19T23:57:53Z",
+      "views": 3617,
+      "days_since_upload": 86.5,
+      "velocity": 41.8,
+      "baseline": null,
+      "ratio": null,
+      "is_outlier": false,
+      "url": "https://www.youtube.com/watch?v=9ojiFNFGAdU"
+    }
+  ],
+  "channels": [
+    "Black Men's Beard"
+  ],
+  "niches": [
+    "hairloss"
+  ]
 }
