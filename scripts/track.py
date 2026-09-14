@@ -336,12 +336,23 @@ def record_snapshot(conn, vid, view_count, days_since_upload, now_iso):
 def compute_baseline(conn, channel_id, video_id, days_since_upload):
     """Median velocity of the TRAILING_COMPARISON_VIDEOS other videos on this channel
     whose current age is closest to this video's - whichever side is nearer, published
-    just before it or just after - excluding anything flagged as an outlier as of the
-    *start of this run* (so one hit doesn't drag up the bar - see the
-    outlier_state_snapshot table set up in main(), which freezes last run's flags for
-    the whole of this run instead of reading live updates other videos in this same
-    run just made, which used to let one early false-positive cascade into excluding
-    more and more of the pool as the run went on).
+    just before it or just after.
+
+    This does NOT exclude videos currently flagged as outliers from the comparison
+    pool. An earlier version did, on the theory that one hit shouldn't drag its own
+    baseline up - but that turned out to be actively dangerous: excluding flagged
+    videos from the pool, forever, meant that if a channel ever had a bad run where
+    most of its videos got wrongly flagged (e.g. from the intra-run ordering bug this
+    file used to have), every future run's baseline got computed from whatever tiny
+    handful of videos were never flagged - almost always old, decayed, low-velocity
+    ones - which made the *next* run's baseline artificially low too, re-flagging
+    nearly everything again. That's a self-reinforcing trap a channel could never
+    recover from on its own. Using the plain median instead is naturally robust to a
+    minority of real outliers in the pool anyway (the median only moves if *more than
+    half* the comparison videos are outliers, which at that point just reflects a
+    genuine step-change in the channel's scale, not noise) - so there's no need for
+    the exclusion, and removing it makes the whole system self-correcting instead of
+    self-entrenching.
 
     This used to instead require a candidate to fall inside a fixed +/-40% age
     window, which could come up short of the required MIN_BASELINE_SAMPLES on a
@@ -356,9 +367,7 @@ def compute_baseline(conn, channel_id, video_id, days_since_upload):
             SELECT s2.video_id, MAX(s2.checked_at) AS latest_checked
             FROM snapshots s2
             JOIN videos v2 ON v2.video_id = s2.video_id
-            LEFT JOIN outlier_state_snapshot o2 ON o2.video_id = s2.video_id
             WHERE v2.channel_id = ? AND s2.video_id != ?
-              AND (o2.is_outlier IS NULL OR o2.is_outlier = 0)
             GROUP BY s2.video_id
         ) latest
         JOIN snapshots s ON s.video_id = latest.video_id AND s.checked_at = latest.latest_checked
@@ -463,20 +472,6 @@ def main():
     os.makedirs(os.path.dirname(DATA_JSON_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
-
-    # Freeze the outlier flags as they stood at the *start* of this run, in a temp
-    # table, and compute every baseline in this run against that frozen snapshot.
-    # Without this, compute_baseline() joined the live outlier_state table, which
-    # this same loop is also updating video-by-video - so whichever video happened
-    # to get processed (and flagged) first, for a channel, would knock itself out
-    # of the comparison pool for every video processed after it in the *same* run.
-    # For a channel with a thin pool (e.g. just backfilled), that could cascade
-    # until almost nothing was left to compare against, and everything downstream
-    # looked like an outlier. Freezing the snapshot up front makes every video in
-    # a run get judged against the same, stable baseline.
-    conn.execute("DROP TABLE IF EXISTS outlier_state_snapshot")
-    conn.execute("CREATE TEMP TABLE outlier_state_snapshot AS SELECT video_id, is_outlier FROM outlier_state")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_outlier_snap_vid ON outlier_state_snapshot(video_id)")
 
     entries = load_channel_entries()
     if not entries:
