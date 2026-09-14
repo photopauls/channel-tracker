@@ -99,11 +99,20 @@
   .title:hover { color: var(--accent); }
   .meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
   .meta .niche-tag { background: var(--panel-2); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
-  .stats { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; margin-top: auto;
-    padding-top: 8px; border-top: 1px solid var(--border); }
-  .stats b { color: var(--text); font-weight: 600; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: auto;
+    padding-top: 10px; border-top: 1px solid var(--border); }
+  .stat-item { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .stat-item .val { font-size: 16px; font-weight: 800; color: var(--text); line-height: 1.15;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat-item .val.ratio-hi { color: var(--outlier); }
+  .stat-item .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 
   .empty, .loading { max-width: 1400px; margin: 0 auto; padding: 80px 28px; text-align: center; color: var(--muted); font-size: 14px; }
+  .pagination { max-width: 1400px; margin: -12px auto 48px; padding: 0 28px; display: flex; align-items: center;
+    justify-content: center; gap: 14px; }
+  .pagination button:disabled { opacity: .4; cursor: default; }
+  .pagination button:disabled:hover { border-color: var(--border); }
+  .page-info { color: var(--muted); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -163,6 +172,11 @@
 
 <div class="grid" id="grid"></div>
 <div class="empty" id="empty" style="display:none">No videos match these filters.</div>
+<div class="pagination" id="pagination" style="display:none">
+  <button id="prevPageBtn">← Prev</button>
+  <span class="page-info" id="pageInfo"></span>
+  <button id="nextPageBtn">Next →</button>
+</div>
 
 <script>
 // ---- dashboard data ----
@@ -180,7 +194,12 @@ let favorites = getFavorites();
 function toggleFavorite(vid) {
   if (favorites.has(vid)) favorites.delete(vid); else favorites.add(vid);
   saveFavorites(favorites);
-  render();
+  const favStat = document.getElementById('favStatNum');
+  if (favStat) favStat.textContent = favorites.size;
+  // If "favourites only" is on, toggling one off should remove it from the list -
+  // that needs a full re-filter. Otherwise just repaint (keeps your current page
+  // and scroll position instead of jumping back to the top).
+  if (document.getElementById('favoritesOnly').checked) render(); else paintGrid();
 }
 
 async function load() {
@@ -206,7 +225,7 @@ async function load() {
     <div class="stat"><div class="num">${DATA.videos.length}</div><div class="label">Videos tracked</div></div>
     <div class="stat"><div class="num outlier-num">${outlierCount}</div><div class="label">Current outliers</div></div>
     <div class="stat"><div class="num">${DATA.niches.length}</div><div class="label">Niches</div></div>
-    <div class="stat"><div class="num" style="color:#ffd166">${favorites.size}</div><div class="label">Favourited</div></div>
+    <div class="stat"><div class="num" id="favStatNum" style="color:#ffd166">${favorites.size}</div><div class="label">Favourited</div></div>
   `;
 
   const chSel = document.getElementById('channelFilter');
@@ -239,6 +258,12 @@ function buildNichePills() {
   });
 }
 
+const PAGE_SIZE = 60;
+let currentRows = [];
+let currentPage = 1;
+
+// Recomputes the filtered/sorted list from scratch and resets to page 1.
+// Call this whenever a filter, sort, or search control changes.
 function render() {
   const channel = document.getElementById('channelFilter').value;
   const outliersOnly = document.getElementById('outliersOnly').checked;
@@ -258,11 +283,26 @@ function render() {
   else if (sortBy === 'views_desc') rows.sort((a, b) => b.views - a.views);
   else rows.sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
 
+  currentRows = rows;
+  currentPage = 1;
+  paintGrid();
+}
+
+// Paints only the current page's worth of cards from the already-filtered
+// currentRows - this is what keeps the page fast even with thousands of
+// tracked videos, and (unlike a "load more" button) the DOM never grows past
+// one page's worth of cards no matter how far you page through.
+function paintGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
-  document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+  document.getElementById('empty').style.display = currentRows.length ? 'none' : 'block';
 
-  for (const v of rows) {
+  const totalPages = Math.max(1, Math.ceil(currentRows.length / PAGE_SIZE));
+  currentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = currentRows.slice(start, start + PAGE_SIZE);
+  const frag = document.createDocumentFragment();
+  for (const v of slice) {
     const card = document.createElement('div');
     card.className = 'card' + (v.is_outlier ? ' outlier' : '');
     card.innerHTML = `
@@ -275,15 +315,37 @@ function render() {
         <a class="title" href="${v.url}" target="_blank" rel="noopener">${escapeHtml(v.title)}</a>
         <div class="meta"><span>${escapeHtml(v.channel_name)}</span><span class="niche-tag">${escapeHtml(v.niche)}</span></div>
         <div class="stats">
-          <span><b>${v.views.toLocaleString()}</b> views</span>
-          <span><b>${v.days_since_upload}</b>d old</span>
-          <span><b>${v.velocity}</b>/day</span>
-          <span>${v.ratio != null ? `<b>${v.ratio}×</b> baseline` : 'baseline: n/a yet'}</span>
+          <div class="stat-item"><span class="val">${v.views.toLocaleString()}</span><span class="lbl">Views</span></div>
+          <div class="stat-item"><span class="val">${v.days_since_upload}d</span><span class="lbl">Old</span></div>
+          <div class="stat-item"><span class="val">${v.velocity}/day</span><span class="lbl">Velocity</span></div>
+          <div class="stat-item"><span class="val${v.is_outlier ? ' ratio-hi' : ''}">${v.ratio != null ? v.ratio + '×' : 'n/a'}</span><span class="lbl">Baseline</span></div>
         </div>
       </div>`;
-    grid.appendChild(card);
+    frag.appendChild(card);
+  }
+  grid.appendChild(frag);
+
+  const pagination = document.getElementById('pagination');
+  const prevBtn = document.getElementById('prevPageBtn');
+  const nextBtn = document.getElementById('nextPageBtn');
+  if (currentRows.length > PAGE_SIZE) {
+    pagination.style.display = 'flex';
+    document.getElementById('pageInfo').textContent =
+      `Page ${currentPage} of ${totalPages} (${currentRows.length} videos)`;
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
+  } else {
+    pagination.style.display = 'none';
   }
 }
+
+function goToPage(delta) {
+  currentPage += delta;
+  paintGrid();
+  document.querySelector('.controls').scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+document.getElementById('prevPageBtn').addEventListener('click', () => goToPage(-1));
+document.getElementById('nextPageBtn').addEventListener('click', () => goToPage(1));
 
 function escapeHtml(s) {
   const d = document.createElement('div');

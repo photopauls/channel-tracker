@@ -45,6 +45,10 @@ AGE_BUCKET_TOLERANCE = 0.4    # compare against videos within +/-40% of the same
 TRAILING_COMPARISON_VIDEOS = 15  # only compare against the channel's N most recently
                                   # published videos in that age band, so the baseline
                                   # tracks the channel's current scale, not its lifetime average
+EXCLUDE_SHORTS = True          # Shorts are identified by duration and skipped entirely -
+SHORTS_MAX_SECONDS = 180        # not stored, not shown, not counted in the outlier baseline.
+                                 # YouTube's own Shorts limit is 3 minutes; drop to 60 if you
+                                 # want the older, stricter definition.
 CLAUDE_MODEL = "claude-sonnet-4-5"
 # -------------------------------------------------------------------------
 
@@ -94,6 +98,30 @@ def init_db(conn):
         """
     )
     conn.commit()
+    _ensure_column(conn, "videos", "is_short", "INTEGER DEFAULT 0")
+    conn.commit()
+
+
+def _ensure_column(conn, table, column, coltype):
+    """Adds a column to an existing table if it's not already there - lets an
+    older tracker.db (from before this column existed) upgrade in place instead
+    of needing to be recreated."""
+    cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+
+
+DURATION_RE = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
+
+
+def parse_duration_seconds(iso_duration):
+    if not iso_duration:
+        return None
+    m = DURATION_RE.match(iso_duration)
+    if not m:
+        return None
+    h, mnt, s = (int(x) if x else 0 for x in m.groups())
+    return h * 3600 + mnt * 60 + s
 
 
 def load_channel_entries():
@@ -245,7 +273,21 @@ def fetch_new_video_ids(uploads_playlist_id, known_ids, cutoff_iso=None):
 
 
 def get_known_video_ids(conn, channel_id):
+    """Every video we've ever seen for this channel, Shorts included - used only to
+    know where to stop paging through the channel's upload playlist."""
     rows = conn.execute("SELECT video_id FROM videos WHERE channel_id=?", (channel_id,)).fetchall()
+    return {r[0] for r in rows}
+
+
+def get_trackable_video_ids(conn, channel_id):
+    """Known videos we still want to refresh stats for - excludes anything already
+    identified as a Short, so we stop spending quota re-checking videos we don't
+    display anywhere."""
+    if not EXCLUDE_SHORTS:
+        return get_known_video_ids(conn, channel_id)
+    rows = conn.execute(
+        "SELECT video_id FROM videos WHERE channel_id=? AND is_short=0", (channel_id,)
+    ).fetchall()
     return {r[0] for r in rows}
 
 
@@ -255,7 +297,7 @@ def fetch_stats(video_ids):
         batch = video_ids[i : i + 50]
         if not batch:
             continue
-        data = yt_get("videos", {"part": "snippet,statistics", "id": ",".join(batch)})
+        data = yt_get("videos", {"part": "snippet,statistics,contentDetails", "id": ",".join(batch)})
         for item in data.get("items", []):
             results[item["id"]] = item
     return results
@@ -265,15 +307,16 @@ def parse_dt(s):
     return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
 
 
-def upsert_video(conn, channel_id, vid, info):
+def upsert_video(conn, channel_id, vid, info, is_short):
     snippet = info["snippet"]
     thumb = (snippet.get("thumbnails", {}).get("medium") or snippet.get("thumbnails", {}).get("default") or {}).get(
         "url", ""
     )
     conn.execute(
-        """INSERT INTO videos (video_id, channel_id, title, published_at, thumbnail_url) VALUES (?,?,?,?,?)
-           ON CONFLICT(video_id) DO UPDATE SET title=excluded.title, thumbnail_url=excluded.thumbnail_url""",
-        (vid, channel_id, snippet.get("title", ""), snippet.get("publishedAt"), thumb),
+        """INSERT INTO videos (video_id, channel_id, title, published_at, thumbnail_url, is_short) VALUES (?,?,?,?,?,?)
+           ON CONFLICT(video_id) DO UPDATE SET title=excluded.title, thumbnail_url=excluded.thumbnail_url,
+             is_short=excluded.is_short""",
+        (vid, channel_id, snippet.get("title", ""), snippet.get("publishedAt"), thumb, int(is_short)),
     )
 
 
@@ -438,9 +481,11 @@ def main():
             known_ids = get_known_video_ids(conn, channel["id"])
             new_ids = fetch_new_video_ids(uploads_id, known_ids, channel_cutoff(channel))
             total_new += len(new_ids)
-            # Track everything this channel has ever had, not just what's new this run -
-            # every video's view count gets refreshed below, regardless of age.
-            channel_video_ids = known_ids | set(new_ids)
+            # Refresh every non-Short video this channel has ever had, not just what's
+            # new this run. Already-classified Shorts are excluded here so we stop
+            # spending quota on them; newly-discovered videos still get checked once
+            # so we can find out whether they're Shorts in the first place.
+            channel_video_ids = get_trackable_video_ids(conn, channel["id"]) | set(new_ids)
             for v in channel_video_ids:
                 video_channel_map[v] = channel["id"]
             all_video_ids.extend(channel_video_ids)
@@ -460,11 +505,21 @@ def main():
     new_outliers = []
     dashboard_rows = []
 
+    skipped_shorts = 0
     for vid, info in stats.items():
         channel_id = video_channel_map.get(vid)
         if not channel_id:
             continue
-        upsert_video(conn, channel_id, vid, info)
+
+        duration_seconds = parse_duration_seconds(info.get("contentDetails", {}).get("duration"))
+        is_short = bool(duration_seconds is not None and duration_seconds <= SHORTS_MAX_SECONDS)
+        upsert_video(conn, channel_id, vid, info, is_short)
+
+        if EXCLUDE_SHORTS and is_short:
+            # Classified and stored (so we don't keep re-discovering it every run),
+            # but it gets no snapshot, no baseline contribution, and no dashboard row.
+            skipped_shorts += 1
+            continue
 
         published_at = parse_dt(info["snippet"]["publishedAt"])
         days_since_upload = max((now - published_at).total_seconds() / 86400, 0)
@@ -535,6 +590,7 @@ def main():
             indent=2,
         )
 
+    print(f"Skipped {skipped_shorts} Shorts this run (duration <= {SHORTS_MAX_SECONDS}s)")
     print(f"New outliers this run: {len(new_outliers)}")
     if new_outliers:
         digest = call_claude_digest(new_outliers)
