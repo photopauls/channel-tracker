@@ -360,14 +360,22 @@ def compute_baseline(conn, channel_id, video_id, days_since_upload):
     was perfectly good comparable data just outside that window. Sorting by
     nearness and taking the closest N instead means it always uses whatever's
     actually closest in time, and only gives up if the channel truly doesn't have
-    enough tracked videos at all yet."""
+    enough tracked videos at all yet.
+
+    Candidates are restricted to v2.is_short = 0 - videos the main loop currently
+    treats as trackable. Without this, a handful of Shorts that happen to have a
+    snapshot on record (e.g. from a run where duration data was briefly missing
+    and a video got misclassified for one run before being corrected) could still
+    show up here even though they're excluded everywhere else. Shorts naturally
+    have tiny view counts, so if enough of them land near a video's age they can
+    dominate the "nearest 15" pool and crater the baseline for real videos."""
     rows = conn.execute(
         """
         SELECT s.velocity, ABS(s.days_since_upload - ?) AS age_diff FROM (
             SELECT s2.video_id, MAX(s2.checked_at) AS latest_checked
             FROM snapshots s2
             JOIN videos v2 ON v2.video_id = s2.video_id
-            WHERE v2.channel_id = ? AND s2.video_id != ?
+            WHERE v2.channel_id = ? AND s2.video_id != ? AND v2.is_short = 0
             GROUP BY s2.video_id
         ) latest
         JOIN snapshots s ON s.video_id = latest.video_id AND s.checked_at = latest.latest_checked
