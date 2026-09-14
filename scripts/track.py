@@ -41,13 +41,14 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "PLACEHOLDER_TELEGRAM_CHAT
 # to only its videos from that date forward instead of its full history.
 OUTLIER_THRESHOLD = 1.75      # velocity must beat this multiple of the channel baseline
 MIN_BASELINE_SAMPLES = 4      # need at least this many comparable videos to trust a baseline
-AGE_BUCKET_TOLERANCE = 0.4    # compare against videos within +/-40% of the same age
-MIN_AGE_BUCKET_DAYS = 2.0     # ...but never a narrower window than +/-2 days, so brand-new
-                               # videos (a few hours old) still get compared against a
-                               # reasonable pool instead of an almost-zero-width bucket
-TRAILING_COMPARISON_VIDEOS = 15  # only compare against the channel's N most recently
-                                  # published videos in that age band, so the baseline
-                                  # tracks the channel's current scale, not its lifetime average
+TRAILING_COMPARISON_VIDEOS = 15  # baseline = median velocity of the N other videos on this
+                                  # channel whose current age is closest to this video's -
+                                  # whichever direction is nearer (published just before it,
+                                  # or just after), not a fixed window. A similar-age video was
+                                  # necessarily uploaded around the same time, so this still
+                                  # tracks the channel's current scale rather than a lifetime
+                                  # average, without a rigid tolerance band that can come up
+                                  # short of candidates on a channel with thin/backfilled history.
 EXCLUDE_SHORTS = True          # Shorts are identified by duration and skipped entirely -
 SHORTS_MAX_SECONDS = 180        # not stored, not shown, not counted in the outlier baseline.
                                  # YouTube's own Shorts limit is 3 minutes; drop to 60 if you
@@ -333,44 +334,38 @@ def record_snapshot(conn, vid, view_count, days_since_upload, now_iso):
 
 
 def compute_baseline(conn, channel_id, video_id, days_since_upload):
-    """Median velocity of this channel's TRAILING_COMPARISON_VIDEOS most recently
-    published videos at a similar age, excluding anything flagged as an outlier as
-    of the *start of this run* (so one hit doesn't drag up the bar - see the
-    outlier_state_snapshot table set up in main(), which freezes last run's flags
-    for the whole of this run instead of reading live updates other videos in this
-    same run just made, which used to let one early false-positive cascade into
-    excluding more and more of the pool as the run went on). Comparing against
-    only the most recently published comparable videos - not the channel's whole
-    history - means the baseline tracks where the channel is *now*, not a blended
-    lifetime average that undersells how much a growing channel's "normal" has
-    moved.
+    """Median velocity of the TRAILING_COMPARISON_VIDEOS other videos on this channel
+    whose current age is closest to this video's - whichever side is nearer, published
+    just before it or just after - excluding anything flagged as an outlier as of the
+    *start of this run* (so one hit doesn't drag up the bar - see the
+    outlier_state_snapshot table set up in main(), which freezes last run's flags for
+    the whole of this run instead of reading live updates other videos in this same
+    run just made, which used to let one early false-positive cascade into excluding
+    more and more of the pool as the run went on).
 
-    The age band is +/-40% of the video's age, but never narrower than
-    MIN_AGE_BUCKET_DAYS - a percentage-only tolerance shrinks to almost nothing
-    for a video that's only hours old, which starved brand-new uploads of any
-    comparison pool at all and silently left them un-flagged no matter how well
-    they were doing."""
-    tolerance_days = max(days_since_upload * AGE_BUCKET_TOLERANCE, MIN_AGE_BUCKET_DAYS)
-    lo = days_since_upload - tolerance_days
-    hi = days_since_upload + tolerance_days
+    This used to instead require a candidate to fall inside a fixed +/-40% age
+    window, which could come up short of the required MIN_BASELINE_SAMPLES on a
+    channel that's thin on history or was recently backfilled - even when there
+    was perfectly good comparable data just outside that window. Sorting by
+    nearness and taking the closest N instead means it always uses whatever's
+    actually closest in time, and only gives up if the channel truly doesn't have
+    enough tracked videos at all yet."""
     rows = conn.execute(
         """
-        SELECT s.velocity FROM (
+        SELECT s.velocity, ABS(s.days_since_upload - ?) AS age_diff FROM (
             SELECT s2.video_id, MAX(s2.checked_at) AS latest_checked
             FROM snapshots s2
             JOIN videos v2 ON v2.video_id = s2.video_id
             LEFT JOIN outlier_state_snapshot o2 ON o2.video_id = s2.video_id
             WHERE v2.channel_id = ? AND s2.video_id != ?
-              AND s2.days_since_upload BETWEEN ? AND ?
               AND (o2.is_outlier IS NULL OR o2.is_outlier = 0)
             GROUP BY s2.video_id
         ) latest
         JOIN snapshots s ON s.video_id = latest.video_id AND s.checked_at = latest.latest_checked
-        JOIN videos v ON v.video_id = s.video_id
-        ORDER BY v.published_at DESC
+        ORDER BY age_diff ASC
         LIMIT ?
         """,
-        (channel_id, video_id, lo, hi, TRAILING_COMPARISON_VIDEOS),
+        (days_since_upload, channel_id, video_id, TRAILING_COMPARISON_VIDEOS),
     ).fetchall()
     velocities = [r[0] for r in rows]
     if len(velocities) < MIN_BASELINE_SAMPLES:
