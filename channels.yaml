@@ -6,14 +6,8 @@
 # - niche: your own grouping label (used to spot cross-niche patterns) - keep these consistent
 
 channels:
-  - id: "UCxxxxxxxxxxxxxxxxxxxxxx"
-    name: "Chuff Reacts"
-    niche: "football-reactions"
-  - id: "UCyyyyyyyyyyyyyyyyyyyyyy"
-    name: "Your Boy B"
-    niche: "hair-loss"
-  - id: "UCzzzzzzzzzzzzzzzzzzzzzz"
-    name: "Example Ecom Channel"
-    niche: "ecom-education"
+  - id: "UC7kKFKme90zilijSwYlvwRQ"
+    name: "Black Men's Beard"
+    niche: "hairloss"
 
 # Add the rest of your ~50-150 channels below in the same format.
