@@ -7,11 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <style>
   :root {
     --bg: #0b0d12; --panel: #12151d; --panel-2: #171b26; --border: #232838;
     --text: #eef0f5; --muted: #838a9c; --accent: #5b8cff; --accent-soft: #1a2540;
-    --outlier: #ffa53e; --outlier-soft: #2c1d0c; --good: #38d996; --radius: 14px;
+    --outlier: #ffa53e; --outlier-soft: #2c1d0c; --good: #38d996; --bad: #ff6767; --radius: 14px;
   }
   * { box-sizing: border-box; }
   body {
@@ -33,9 +34,10 @@
   .controls { max-width: 1400px; margin: 0 auto; padding: 0 28px 18px; display: flex; flex-wrap: wrap;
     gap: 10px; align-items: center; position: sticky; top: 0; z-index: 10; background: var(--bg);
     padding-top: 14px; border-bottom: 1px solid var(--border); }
-  input[type=search] { background: var(--panel); border: 1px solid var(--border); color: var(--text);
-    padding: 10px 14px; border-radius: 999px; font-size: 13px; width: 220px; font-family: inherit; }
-  input[type=search]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input[type=search], input[type=text], input[type=password] { background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 14px; border-radius: 999px; font-size: 13px; font-family: inherit; }
+  input[type=search] { width: 220px; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 10px 12px;
     border-radius: 10px; font-size: 13px; font-family: inherit; }
 
@@ -46,7 +48,7 @@
   .pill.active { background: var(--accent); border-color: var(--accent); color: white; }
 
   .toggle { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border);
-    padding: 9px 14px 9px 10px; border-radius: 999px; font-size: 13px; cursor: pointer; margin-left: auto; }
+    padding: 9px 14px 9px 10px; border-radius: 999px; font-size: 13px; cursor: pointer; }
   .switch { width: 34px; height: 19px; background: var(--border); border-radius: 999px; position: relative;
     transition: .15s; flex-shrink: 0; }
   .switch::after { content: ''; position: absolute; width: 15px; height: 15px; border-radius: 50%; background: white;
@@ -54,6 +56,28 @@
   input:checked + .switch { background: var(--outlier); }
   input:checked + .switch::after { left: 17px; }
   .toggle input { display: none; }
+
+  button { font-family: inherit; cursor: pointer; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); padding: 10px 16px; font-size: 13px; font-weight: 600; transition: .15s; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  button.secondary { background: transparent; color: var(--muted); }
+  button.danger:hover { border-color: var(--bad); color: var(--bad); }
+
+  .manage-wrap { max-width: 1400px; margin: 0 auto; padding: 16px 28px 0; }
+  .manage-body { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
+  .manage-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .manage-row input { flex: 1; min-width: 160px; }
+  .manage-status, .manage-msg { font-size: 12px; color: var(--muted); }
+  .manage-msg:not(:empty) { color: var(--accent); }
+  .channel-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+  .channel-row { display: flex; align-items: center; gap: 10px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+  .channel-row-main { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .channel-row-niche { color: var(--muted); font-size: 12px; background: var(--panel); padding: 2px 8px; border-radius: 999px; }
+  .del-btn { padding: 6px 12px; font-size: 12px; }
+  .manage-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px;
     max-width: 1400px; margin: 0 auto; padding: 22px 28px 48px; }
@@ -65,6 +89,11 @@
   .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; }
   .ribbon { position: absolute; top: 10px; left: 10px; background: var(--outlier); color: #1a1200; font-weight: 800;
     font-size: 11px; padding: 4px 9px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .fav-btn { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(11,13,18,.65); border: 1px solid rgba(255,255,255,.15); color: #cfd3dd; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: .15s; }
+  .fav-btn:hover { border-color: #ffd166; color: #ffd166; }
+  .fav-btn.active { background: #ffd166; border-color: #ffd166; color: #1a1200; }
   .card-body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .title { font-size: 14px; line-height: 1.4; font-weight: 600; text-decoration: none; color: var(--text); }
   .title:hover { color: var(--accent); }
@@ -98,14 +127,61 @@
     <span class="switch"></span>
     Outliers only
   </label>
+  <label class="toggle">
+    <input type="checkbox" id="favoritesOnly">
+    <span class="switch"></span>
+    Favourites only
+  </label>
+</div>
+
+<div class="manage-wrap">
+  <button id="manageToggle">⚙ Manage channels</button>
+  <div class="manage-body" id="manageBody" hidden>
+    <div class="manage-row">
+      <input type="password" id="ghToken" placeholder="GitHub personal access token (repo scope)">
+      <button class="primary" id="saveToken">Save token</button>
+      <button class="secondary" id="clearToken">Forget token</button>
+    </div>
+    <div class="manage-status" id="tokenStatus">
+      Token is stored only in this browser and used to edit channels.yaml directly on GitHub.
+      <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">Create one here</a> —
+      classic token, "repo" scope is enough.
+    </div>
+
+    <div class="manage-row add-row">
+      <input type="text" id="newUrl" placeholder="Channel URL, e.g. https://youtube.com/@handle">
+      <input type="text" id="newNiche" placeholder="Niche">
+      <input type="text" id="newName" placeholder="Name (optional)">
+      <input type="text" id="newSince" placeholder="Since YYYY-MM-DD (optional)">
+      <button class="primary" id="addChannelBtn">Add channel</button>
+    </div>
+
+    <div class="manage-msg" id="manageMsg"></div>
+    <div class="channel-list" id="channelList"></div>
+  </div>
 </div>
 
 <div class="grid" id="grid"></div>
 <div class="empty" id="empty" style="display:none">No videos match these filters.</div>
 
 <script>
+// ---- dashboard data ----
 let DATA = { videos: [], channels: [], niches: [] };
-let activeNiche = "";
+let activeNiches = new Set(); // empty set = "all niches"
+
+function getFavorites() {
+  try { return new Set(JSON.parse(localStorage.getItem('favVideos') || '[]')); } catch (e) { return new Set(); }
+}
+function saveFavorites(set) {
+  try { localStorage.setItem('favVideos', JSON.stringify([...set])); } catch (e) {}
+}
+let favorites = getFavorites();
+
+function toggleFavorite(vid) {
+  if (favorites.has(vid)) favorites.delete(vid); else favorites.add(vid);
+  saveFavorites(favorites);
+  render();
+}
 
 async function load() {
   try {
@@ -127,49 +203,54 @@ async function load() {
 
   document.getElementById('statsRow').innerHTML = `
     <div class="stat"><div class="num">${DATA.channel_count ?? DATA.channels.length}</div><div class="label">Channels tracked</div></div>
-    <div class="stat"><div class="num">${DATA.videos.length}</div><div class="label">Videos in window</div></div>
+    <div class="stat"><div class="num">${DATA.videos.length}</div><div class="label">Videos tracked</div></div>
     <div class="stat"><div class="num outlier-num">${outlierCount}</div><div class="label">Current outliers</div></div>
     <div class="stat"><div class="num">${DATA.niches.length}</div><div class="label">Niches</div></div>
+    <div class="stat"><div class="num" style="color:#ffd166">${favorites.size}</div><div class="label">Favourited</div></div>
   `;
 
   const chSel = document.getElementById('channelFilter');
   DATA.channels.forEach(c => chSel.add(new Option(c, c)));
 
-  const pillRow = document.getElementById('nichePills');
-  pillRow.innerHTML = '';
-  const allPill = document.createElement('div');
-  allPill.className = 'pill active';
-  allPill.textContent = 'All niches';
-  allPill.onclick = () => setNiche('', allPill);
-  pillRow.appendChild(allPill);
-  DATA.niches.forEach(n => {
-    const p = document.createElement('div');
-    p.className = 'pill';
-    p.textContent = n;
-    p.onclick = () => setNiche(n, p);
-    pillRow.appendChild(p);
-  });
-
+  buildNichePills();
   render();
 }
 
-function setNiche(niche, el) {
-  activeNiche = niche;
-  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
-  render();
+function buildNichePills() {
+  const pillRow = document.getElementById('nichePills');
+  pillRow.innerHTML = '';
+
+  const allPill = document.createElement('div');
+  allPill.className = 'pill' + (activeNiches.size === 0 ? ' active' : '');
+  allPill.textContent = 'All niches';
+  allPill.onclick = () => { activeNiches.clear(); buildNichePills(); render(); };
+  pillRow.appendChild(allPill);
+
+  DATA.niches.forEach(n => {
+    const p = document.createElement('div');
+    p.className = 'pill' + (activeNiches.has(n) ? ' active' : '');
+    p.textContent = n;
+    p.onclick = () => {
+      if (activeNiches.has(n)) activeNiches.delete(n); else activeNiches.add(n);
+      buildNichePills();
+      render();
+    };
+    pillRow.appendChild(p);
+  });
 }
 
 function render() {
   const channel = document.getElementById('channelFilter').value;
   const outliersOnly = document.getElementById('outliersOnly').checked;
+  const favoritesOnly = document.getElementById('favoritesOnly').checked;
   const sortBy = document.getElementById('sortBy').value;
   const q = document.getElementById('search').value.trim().toLowerCase();
 
   let rows = DATA.videos.filter(v =>
     (!channel || v.channel_name === channel) &&
-    (!activeNiche || v.niche === activeNiche) &&
+    (activeNiches.size === 0 || activeNiches.has(v.niche)) &&
     (!outliersOnly || v.is_outlier) &&
+    (!favoritesOnly || favorites.has(v.video_id)) &&
     (!q || v.title.toLowerCase().includes(q))
   );
 
@@ -188,6 +269,7 @@ function render() {
       <div class="thumb-wrap">
         <img class="thumb" src="${v.thumbnail}" loading="lazy" alt="">
         ${v.is_outlier ? `<span class="ribbon">${v.ratio}× baseline</span>` : ''}
+        <button class="fav-btn${favorites.has(v.video_id) ? ' active' : ''}" data-vid="${v.video_id}" title="Toggle favourite">${favorites.has(v.video_id) ? '★' : '☆'}</button>
       </div>
       <div class="card-body">
         <a class="title" href="${v.url}" target="_blank" rel="noopener">${escapeHtml(v.title)}</a>
@@ -196,6 +278,7 @@ function render() {
           <span><b>${v.views.toLocaleString()}</b> views</span>
           <span><b>${v.days_since_upload}</b>d old</span>
           <span><b>${v.velocity}</b>/day</span>
+          <span>${v.ratio != null ? `<b>${v.ratio}×</b> baseline` : 'baseline: n/a yet'}</span>
         </div>
       </div>`;
     grid.appendChild(card);
@@ -210,7 +293,154 @@ function escapeHtml(s) {
 
 ['channelFilter', 'sortBy'].forEach(id => document.getElementById(id).addEventListener('change', render));
 document.getElementById('outliersOnly').addEventListener('change', render);
+document.getElementById('favoritesOnly').addEventListener('change', render);
 document.getElementById('search').addEventListener('input', render);
+document.getElementById('grid').addEventListener('click', (e) => {
+  const btn = e.target.closest('.fav-btn');
+  if (btn) { e.preventDefault(); toggleFavorite(btn.dataset.vid); }
+});
+
+// ---- manage channels (reads/writes channels.yaml on GitHub directly) ----
+const REPO_OWNER = "photopauls";
+const REPO_NAME = "channel-tracker";
+const CHANNELS_PATH = "channels.yaml";
+
+function getToken() { try { return localStorage.getItem('ghToken') || ''; } catch (e) { return ''; } }
+function setToken(t) { try { localStorage.setItem('ghToken', t); } catch (e) {} }
+function clearStoredToken() { try { localStorage.removeItem('ghToken'); } catch (e) {} }
+
+function b64EncodeUnicode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+function b64DecodeUnicode(str) {
+  const binary = atob(str.replace(/\n/g, ''));
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+async function ghGetFile() {
+  const token = getToken();
+  const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CHANNELS_PATH}`, {
+    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`GitHub fetch failed (${res.status}) - check your token and repo access`);
+  const data = await res.json();
+  const content = b64DecodeUnicode(data.content);
+  const parsed = jsyaml.load(content) || {};
+  if (!Array.isArray(parsed.channels)) parsed.channels = [];
+  return { sha: data.sha, parsed };
+}
+
+async function ghPutFile(parsed, sha, message) {
+  const token = getToken();
+  const header = "# Managed by the dashboard's \"Manage channels\" panel - also editable by hand.\n" +
+    "# Paste a channel URL (any format: @handle, /channel/UC..., /c/Name, /user/Name).\n" +
+    "# niche = your grouping label. name is optional (auto-filled from YouTube if left out).\n" +
+    "# since: YYYY-MM-DD is optional - limits that one channel to videos from that date forward;\n" +
+    "# leave it out to track a channel's entire history.\n\n";
+  const yamlBody = jsyaml.dump(parsed, { lineWidth: -1 });
+  const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CHANNELS_PATH}`, {
+    method: 'PUT',
+    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content: b64EncodeUnicode(header + yamlBody), sha }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub write failed (${res.status})`);
+  }
+}
+
+async function refreshChannelList() {
+  const listEl = document.getElementById('channelList');
+  const msgEl = document.getElementById('manageMsg');
+  if (!getToken()) { listEl.innerHTML = ''; return; }
+  listEl.innerHTML = '<div class="manage-empty">Loading…</div>';
+  try {
+    const { parsed } = await ghGetFile();
+    const channels = parsed.channels;
+    listEl.innerHTML = channels.length ? channels.map((c, i) => `
+      <div class="channel-row">
+        <span class="channel-row-main">${escapeHtml(c.name || c.url || c.id || '(unnamed)')}</span>
+        <span class="channel-row-niche">${escapeHtml(c.niche || '')}</span>
+        <button class="del-btn danger" data-index="${i}">Remove</button>
+      </div>`).join('') : '<div class="manage-empty">No channels yet.</div>';
+    listEl.querySelectorAll('.del-btn').forEach(btn => {
+      btn.onclick = () => deleteChannel(parseInt(btn.dataset.index, 10));
+    });
+    msgEl.textContent = '';
+  } catch (e) {
+    listEl.innerHTML = '';
+    msgEl.textContent = 'Could not load channels.yaml: ' + e.message;
+  }
+}
+
+async function addChannel() {
+  const msgEl = document.getElementById('manageMsg');
+  const url = document.getElementById('newUrl').value.trim();
+  const niche = document.getElementById('newNiche').value.trim();
+  const name = document.getElementById('newName').value.trim();
+  const since = document.getElementById('newSince').value.trim();
+  if (!url || !niche) { msgEl.textContent = 'URL and niche are both required.'; return; }
+  if (!getToken()) { msgEl.textContent = 'Save a GitHub token above first.'; return; }
+  msgEl.textContent = 'Adding…';
+  try {
+    const { parsed, sha } = await ghGetFile();
+    const entry = { url, niche };
+    if (name) entry.name = name;
+    if (since) entry.since = since;
+    parsed.channels.push(entry);
+    await ghPutFile(parsed, sha, `Add channel: ${name || url}`);
+    msgEl.textContent = "Added. It'll show up on the dashboard after the next tracker run.";
+    document.getElementById('newUrl').value = '';
+    document.getElementById('newNiche').value = '';
+    document.getElementById('newName').value = '';
+    document.getElementById('newSince').value = '';
+    refreshChannelList();
+  } catch (e) {
+    msgEl.textContent = 'Failed to add: ' + e.message;
+  }
+}
+
+async function deleteChannel(index) {
+  const msgEl = document.getElementById('manageMsg');
+  if (!confirm('Remove this channel from tracking? (Its history stays in the database, it just stops updating.)')) return;
+  msgEl.textContent = 'Removing…';
+  try {
+    const { parsed, sha } = await ghGetFile();
+    const removed = parsed.channels.splice(index, 1)[0];
+    await ghPutFile(parsed, sha, `Remove channel: ${(removed && (removed.name || removed.url)) || 'unknown'}`);
+    msgEl.textContent = 'Removed.';
+    refreshChannelList();
+  } catch (e) {
+    msgEl.textContent = 'Failed to remove: ' + e.message;
+  }
+}
+
+document.getElementById('manageToggle').onclick = () => {
+  const body = document.getElementById('manageBody');
+  body.hidden = !body.hidden;
+  if (!body.hidden) refreshChannelList();
+};
+document.getElementById('saveToken').onclick = () => {
+  const t = document.getElementById('ghToken').value.trim();
+  if (!t) return;
+  setToken(t);
+  document.getElementById('ghToken').value = '';
+  document.getElementById('tokenStatus').textContent = 'Token saved in this browser.';
+  refreshChannelList();
+};
+document.getElementById('clearToken').onclick = () => {
+  clearStoredToken();
+  document.getElementById('channelList').innerHTML = '';
+  document.getElementById('tokenStatus').textContent = 'Token removed from this browser.';
+};
+if (getToken()) {
+  document.getElementById('tokenStatus').textContent = 'Token saved in this browser.';
+}
 
 load();
 </script>
