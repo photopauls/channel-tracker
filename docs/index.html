@@ -165,7 +165,7 @@
 
     <div class="manage-row add-row">
       <input type="text" id="newUrl" placeholder="Channel URL, e.g. https://youtube.com/@handle">
-      <input type="text" id="newNiche" placeholder="Niche">
+      <input type="text" id="newTags" placeholder="Tags, comma separated">
       <input type="text" id="newName" placeholder="Name (optional)">
       <input type="text" id="newSince" placeholder="Since YYYY-MM-DD (optional)">
       <button class="primary" id="addChannelBtn">Add channel</button>
@@ -190,28 +190,71 @@
 let DATA = { videos: [], channels: [], niches: [] };
 let activeNiches = new Set(); // empty set = "all niches"
 
+// Favourites live in two places. localStorage always has them, instantly, on
+// this one browser - that's what keeps working with no setup at all. If a
+// GitHub token is saved (the same one used for channel management below),
+// they're ALSO synced to a small favorites.json file committed to the repo,
+// which is what makes them survive clearing this browser's storage or show up
+// on a different device. Reading favorites.json needs no token at all (it
+// sits right next to data.json on the published site) - only writing a
+// change to it does.
 function getFavorites() {
   try { return new Set(JSON.parse(localStorage.getItem('favVideos') || '[]')); } catch (e) { return new Set(); }
 }
-function saveFavorites(set) {
+function saveFavoritesLocal(set) {
   try { localStorage.setItem('favVideos', JSON.stringify([...set])); } catch (e) {}
 }
 let favorites = getFavorites();
 
+// Pulls in whatever's committed to favorites.json (if anything) and merges it
+// into the local set, so a favourite added on another device - or before this
+// browser's storage was cleared - shows up here too. Call this once at load,
+// before the stats row and grid first render.
+async function syncFavoritesFromRepo() {
+  try {
+    const res = await fetch('favorites.json', { cache: 'no-store' });
+    if (res.ok) {
+      const remote = await res.json();
+      if (Array.isArray(remote)) {
+        remote.forEach(vid => favorites.add(vid));
+        saveFavoritesLocal(favorites);
+      }
+    }
+  } catch (e) { /* offline, or favorites.json doesn't exist yet - local set stands as-is */ }
+}
+
+// Fire-and-forget commit of the current favourites set to the repo. Silently
+// does nothing without a saved token - favourites still work, they just stay
+// local to this browser until a token's saved, same tradeoff as channel
+// management below.
+async function commitFavorites() {
+  if (!getToken()) return;
+  try {
+    const { sha } = await ghGetJsonFile(FAVORITES_PATH);
+    await ghPutJsonFile(FAVORITES_PATH, [...favorites].sort(), sha, 'Update favourites');
+  } catch (e) {
+    console.warn('Could not sync favourites to GitHub:', e.message);
+  }
+}
+
 function toggleFavorite(vid) {
   if (favorites.has(vid)) favorites.delete(vid); else favorites.add(vid);
-  saveFavorites(favorites);
+  saveFavoritesLocal(favorites);
   const favStat = document.getElementById('favStatNum');
   if (favStat) favStat.textContent = favorites.size;
   // If "favourites only" is on, toggling one off should remove it from the list -
   // that needs a full re-filter. Otherwise just repaint (keeps your current page
   // and scroll position instead of jumping back to the top).
   if (document.getElementById('favoritesOnly').checked) render(); else paintGrid();
+  commitFavorites();
 }
 
 async function load() {
   try {
-    const res = await fetch('data.json', { cache: 'no-store' });
+    const [res] = await Promise.all([
+      fetch('data.json', { cache: 'no-store' }),
+      syncFavoritesFromRepo(),
+    ]);
     DATA = await res.json();
   } catch (e) {
     document.getElementById('tagline').textContent = "No data yet — the tracker hasn't run successfully yet.";
@@ -231,7 +274,7 @@ async function load() {
     <div class="stat"><div class="num">${DATA.channel_count ?? DATA.channels.length}</div><div class="label">Channels tracked</div></div>
     <div class="stat"><div class="num">${DATA.videos.length}</div><div class="label">Videos tracked</div></div>
     <div class="stat"><div class="num outlier-num">${outlierCount}</div><div class="label">Current outliers</div></div>
-    <div class="stat"><div class="num">${DATA.niches.length}</div><div class="label">Niches</div></div>
+    <div class="stat"><div class="num">${DATA.niches.length}</div><div class="label">Tags</div></div>
     <div class="stat"><div class="num" id="favStatNum" style="color:#ffd166">${favorites.size}</div><div class="label">Favourited</div></div>
   `;
 
@@ -248,7 +291,7 @@ function buildNichePills() {
 
   const allPill = document.createElement('div');
   allPill.className = 'pill' + (activeNiches.size === 0 ? ' active' : '');
-  allPill.textContent = 'All niches';
+  allPill.textContent = 'All tags';
   allPill.onclick = () => { activeNiches.clear(); buildNichePills(); render(); };
   pillRow.appendChild(allPill);
 
@@ -280,7 +323,7 @@ function render() {
 
   let rows = DATA.videos.filter(v =>
     (!channel || v.channel_name === channel) &&
-    (activeNiches.size === 0 || activeNiches.has(v.niche)) &&
+    (activeNiches.size === 0 || (v.tags || []).some(t => activeNiches.has(t))) &&
     (!outliersOnly || v.is_outlier) &&
     (!favoritesOnly || favorites.has(v.video_id)) &&
     (!q || v.title.toLowerCase().includes(q))
@@ -321,7 +364,7 @@ function paintGrid() {
       </div>
       <div class="card-body">
         <a class="title" href="${v.url}" target="_blank" rel="noopener">${escapeHtml(v.title)}</a>
-        <div class="meta"><span class="channel-link" data-channel="${escapeHtml(v.channel_name)}" title="View only this channel">${escapeHtml(v.channel_name)}</span><span class="niche-tag">${escapeHtml(v.niche)}</span></div>
+        <div class="meta"><span class="channel-link" data-channel="${escapeHtml(v.channel_name)}" title="View only this channel">${escapeHtml(v.channel_name)}</span>${(v.tags || []).map(t => `<span class="niche-tag">${escapeHtml(t)}</span>`).join('')}</div>
         <div class="stats">
           <div class="stat-item"><span class="val">${v.views.toLocaleString()}</span><span class="lbl">Views</span></div>
           <div class="stat-item"><span class="val">${v.days_since_upload}d</span><span class="lbl">Old</span></div>
@@ -380,6 +423,10 @@ document.getElementById('grid').addEventListener('click', (e) => {
 const REPO_OWNER = "photopauls";
 const REPO_NAME = "channel-tracker";
 const CHANNELS_PATH = "channels.yaml";
+const FAVORITES_PATH = "docs/favorites.json"; // sits next to data.json, so anyone viewing the
+                                                // published site can read it with no token -
+                                                // only WRITING a change needs the GitHub token,
+                                                // same as channel management below.
 
 function getToken() { try { return localStorage.getItem('ghToken') || ''; } catch (e) { return ''; } }
 function setToken(t) { try { localStorage.setItem('ghToken', t); } catch (e) {} }
@@ -415,7 +462,7 @@ async function ghPutFile(parsed, sha, message) {
   const token = getToken();
   const header = "# Managed by the dashboard's \"Manage channels\" panel - also editable by hand.\n" +
     "# Paste a channel URL (any format: @handle, /channel/UC..., /c/Name, /user/Name).\n" +
-    "# niche = your grouping label. name is optional (auto-filled from YouTube if left out).\n" +
+    "# tags = your own grouping labels, a channel can have more than one. name is optional (auto-filled from YouTube if left out).\n" +
     "# since: YYYY-MM-DD is optional - limits that one channel to videos from that date forward;\n" +
     "# leave it out to track a channel's entire history.\n\n";
   const yamlBody = jsyaml.dump(parsed, { lineWidth: -1 });
@@ -430,6 +477,59 @@ async function ghPutFile(parsed, sha, message) {
   }
 }
 
+// Generic versions of the two functions above for any small JSON file in the
+// repo (used for favorites.json) - same GitHub Contents API, just without the
+// YAML parsing/serializing or the channels.yaml-specific header comment.
+async function ghGetJsonFile(path) {
+  const token = getToken();
+  const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
+    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
+  if (res.status === 404) return { sha: null, data: null }; // file doesn't exist yet - fine
+  if (!res.ok) throw new Error(`GitHub fetch failed (${res.status})`);
+  const data = await res.json();
+  return { sha: data.sha, data: JSON.parse(b64DecodeUnicode(data.content)) };
+}
+
+async function ghPutJsonFile(path, obj, sha, message) {
+  const token = getToken();
+  const body = { message, content: b64EncodeUnicode(JSON.stringify(obj, null, 2) + "\n") };
+  if (sha) body.sha = sha;
+  const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
+    method: 'PUT',
+    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub write failed (${res.status})`);
+  }
+}
+
+// A channel entry can carry its tags either as a new 'tags: [a, b]' list or the
+// old single 'niche: x' string (or, in principle, both) - this reads whichever
+// is there and always hands back a clean array, so the rest of the panel never
+// has to care which form a given channel was saved in.
+function channelTagsOf(c) {
+  const tags = [];
+  (Array.isArray(c.tags) ? c.tags : []).forEach(t => {
+    t = String(t).trim();
+    if (t && !tags.includes(t)) tags.push(t);
+  });
+  if (c.niche) {
+    const n = String(c.niche).trim();
+    if (n && !tags.includes(n)) tags.push(n);
+  }
+  return tags;
+}
+
+// Turns a "hairloss, competitors" input into ["hairloss", "competitors"] -
+// trims each one, drops empties, and de-dupes.
+function parseTagsInput(str) {
+  return [...new Set((str || '').split(',').map(s => s.trim()).filter(Boolean))];
+}
+
 async function refreshChannelList() {
   const listEl = document.getElementById('channelList');
   const msgEl = document.getElementById('manageMsg');
@@ -439,13 +539,13 @@ async function refreshChannelList() {
     const { parsed } = await ghGetFile();
     const channels = parsed.channels;
 
-    const niches = [...new Set(channels.map(c => c.niche).filter(Boolean))].sort();
-    document.getElementById('nicheOptions').innerHTML = niches.map(n => `<option value="${escapeHtml(n)}">`).join('');
+    const allTags = [...new Set(channels.flatMap(channelTagsOf))].sort();
+    document.getElementById('nicheOptions').innerHTML = allTags.map(n => `<option value="${escapeHtml(n)}">`).join('');
 
     listEl.innerHTML = channels.length ? channels.map((c, i) => `
       <div class="channel-row">
         <span class="channel-row-main">${escapeHtml(c.name || c.url || c.id || '(unnamed)')}</span>
-        <input class="niche-input" list="nicheOptions" data-index="${i}" value="${escapeHtml(c.niche || '')}">
+        <input class="niche-input" list="nicheOptions" data-index="${i}" placeholder="Tags, comma separated" value="${escapeHtml(channelTagsOf(c).join(', '))}">
         <button class="save-niche-btn" data-index="${i}" disabled>Save</button>
         <button class="del-btn danger" data-index="${i}">Remove</button>
       </div>`).join('') : '<div class="manage-empty">No channels yet.</div>';
@@ -458,7 +558,7 @@ async function refreshChannelList() {
       input.addEventListener('input', () => { saveBtn.disabled = false; });
     });
     listEl.querySelectorAll('.save-niche-btn').forEach(btn => {
-      btn.onclick = () => saveNiche(parseInt(btn.dataset.index, 10), btn);
+      btn.onclick = () => saveTags(parseInt(btn.dataset.index, 10), btn);
     });
     msgEl.textContent = '';
   } catch (e) {
@@ -467,23 +567,24 @@ async function refreshChannelList() {
   }
 }
 
-async function saveNiche(index, btn) {
+async function saveTags(index, btn) {
   const msgEl = document.getElementById('manageMsg');
   const input = document.querySelector(`.niche-input[data-index="${index}"]`);
-  const niche = input.value.trim();
-  if (!niche) { msgEl.textContent = 'Niche cannot be empty.'; return; }
+  const tags = parseTagsInput(input.value);
+  if (!tags.length) { msgEl.textContent = 'At least one tag is required.'; return; }
   btn.disabled = true;
   msgEl.textContent = 'Saving…';
   try {
     const { parsed, sha } = await ghGetFile();
     if (!parsed.channels[index]) throw new Error('Channel list changed since this loaded - reopen the panel and try again.');
     const name = parsed.channels[index].name || parsed.channels[index].url || 'channel';
-    parsed.channels[index].niche = niche;
-    await ghPutFile(parsed, sha, `Retag channel: ${name} -> ${niche}`);
+    parsed.channels[index].tags = tags;
+    delete parsed.channels[index].niche; // fully migrated to the tags list on save
+    await ghPutFile(parsed, sha, `Retag channel: ${name} -> ${tags.join(', ')}`);
     msgEl.textContent = "Saved. It'll show up on the dashboard after the next tracker run.";
     refreshChannelList();
   } catch (e) {
-    msgEl.textContent = 'Failed to save niche: ' + e.message;
+    msgEl.textContent = 'Failed to save tags: ' + e.message;
     btn.disabled = false;
   }
 }
@@ -491,22 +592,22 @@ async function saveNiche(index, btn) {
 async function addChannel() {
   const msgEl = document.getElementById('manageMsg');
   const url = document.getElementById('newUrl').value.trim();
-  const niche = document.getElementById('newNiche').value.trim();
+  const tags = parseTagsInput(document.getElementById('newTags').value);
   const name = document.getElementById('newName').value.trim();
   const since = document.getElementById('newSince').value.trim();
-  if (!url || !niche) { msgEl.textContent = 'URL and niche are both required.'; return; }
+  if (!url || !tags.length) { msgEl.textContent = 'URL and at least one tag are both required.'; return; }
   if (!getToken()) { msgEl.textContent = 'Save a GitHub token above first.'; return; }
   msgEl.textContent = 'Adding…';
   try {
     const { parsed, sha } = await ghGetFile();
-    const entry = { url, niche };
+    const entry = { url, tags };
     if (name) entry.name = name;
     if (since) entry.since = since;
     parsed.channels.push(entry);
     await ghPutFile(parsed, sha, `Add channel: ${name || url}`);
     msgEl.textContent = "Added. It'll show up on the dashboard after the next tracker run.";
     document.getElementById('newUrl').value = '';
-    document.getElementById('newNiche').value = '';
+    document.getElementById('newTags').value = '';
     document.getElementById('newName').value = '';
     document.getElementById('newSince').value = '';
     refreshChannelList();

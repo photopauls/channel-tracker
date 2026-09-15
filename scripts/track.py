@@ -149,6 +149,26 @@ def load_channel_entries():
     return cfg.get("channels", []) or []
 
 
+def channel_tags(entry):
+    """A channel can be grouped under more than one tag now (e.g. both "hairloss"
+    and "competitors"), via 'tags: [a, b]' in channels.yaml. The old single
+    'niche: x' field still works exactly as before - it's just treated as a
+    one-item tag list - so nothing already in channels.yaml needs to change.
+    If a channel somehow has both, they're merged (deduped, order preserved).
+    Falls back to a single "uncategorized" tag if neither is set."""
+    tags = []
+    for t in entry.get("tags") or []:
+        t = str(t).strip()
+        if t and t not in tags:
+            tags.append(t)
+    niche = entry.get("niche")
+    if niche:
+        niche = str(niche).strip()
+        if niche and niche not in tags:
+            tags.append(niche)
+    return tags or ["uncategorized"]
+
+
 def yt_get(path, params):
     params = {**params, "key": YOUTUBE_API_KEY}
     r = requests.get(f"{YT_API}/{path}", params=params, timeout=30)
@@ -237,7 +257,12 @@ def resolve_channel_id(conn, ref):
     return channel_id, name
 
 
-def ensure_uploads_playlist(conn, channel_id, name, niche):
+def ensure_uploads_playlist(conn, channel_id, name, tags):
+    # The channels table's "niche" column is purely informational (nothing reads it
+    # back for filtering - the dashboard's tag filter works off docs/data.json,
+    # built fresh from channels.yaml every run), so multiple tags are just joined
+    # into one readable string here.
+    niche = ", ".join(tags)
     cur = conn.execute("SELECT uploads_playlist_id FROM channels WHERE channel_id=?", (channel_id,))
     row = cur.fetchone()
     if row and row[0]:
@@ -448,13 +473,14 @@ def call_claude_digest(new_outliers):
         return None
     prompt = (
         "These YouTube videos just started outperforming their own channel's normal baseline. "
-        "For each I give the title, channel, niche, and how many times its usual pace it's beating.\n"
+        "For each I give the title, channel, tags, and how many times its usual pace it's beating.\n"
         "Identify recurring title/hook/structural patterns across them, call out anything that shows up "
-        "in more than one channel or niche, and note anything worth testing on other channels I run. "
+        "in more than one channel or tag, and note anything worth testing on other channels I run. "
         "Be concise and concrete - no generic advice.\n\n"
     )
     for v in new_outliers:
-        prompt += f"- \"{v['title']}\" | channel: {v['channel_name']} | niche: {v['niche']} | {v['ratio']:.1f}x baseline\n"
+        tags = ", ".join(v["tags"])
+        prompt += f"- \"{v['title']}\" | channel: {v['channel_name']} | tags: {tags} | {v['ratio']:.1f}x baseline\n"
     try:
         r = requests.post(
             "https://api.anthropic.com/v1/messages",
@@ -489,7 +515,7 @@ def send_telegram(text):
 
 def resolve_all_channels(conn, entries):
     """Turns channels.yaml entries (URLs, handles, or raw IDs) into a clean list
-    of {id, name, niche, since} dicts, resolving+caching each one against the API."""
+    of {id, name, tags, since} dicts, resolving+caching each one against the API."""
     resolved = []
     for entry in entries:
         try:
@@ -502,8 +528,9 @@ def resolve_all_channels(conn, entries):
                 print(f"WARN: couldn't resolve channel for: {entry}")
                 continue
             name = entry.get("name") or resolved_name or channel_id
-            niche = entry.get("niche", "uncategorized")
-            resolved.append({"id": channel_id, "name": name, "niche": niche, "since": entry.get("since")})
+            resolved.append(
+                {"id": channel_id, "name": name, "tags": channel_tags(entry), "since": entry.get("since")}
+            )
         except Exception as e:
             print(f"WARN: error resolving channel entry {entry} - {e}")
         time.sleep(0.05)
@@ -552,7 +579,7 @@ def main():
 
     for channel in channels:
         try:
-            uploads_id = ensure_uploads_playlist(conn, channel["id"], channel["name"], channel["niche"])
+            uploads_id = ensure_uploads_playlist(conn, channel["id"], channel["name"], channel["tags"])
             if not uploads_id:
                 continue
             known_ids = get_known_video_ids(conn, channel["id"])
@@ -577,7 +604,7 @@ def main():
 
     stats = fetch_stats(all_video_ids)
     channel_names = {c["id"]: c["name"] for c in channels}
-    channel_niches = {c["id"]: c["niche"] for c in channels}
+    channel_tags_map = {c["id"]: c["tags"] for c in channels}
 
     new_outliers = []
     dashboard_rows = []
@@ -629,7 +656,7 @@ def main():
                     "video_id": vid,
                     "title": info["snippet"]["title"],
                     "channel_name": channel_names.get(channel_id, channel_id),
-                    "niche": channel_niches.get(channel_id, "uncategorized"),
+                    "tags": channel_tags_map.get(channel_id, ["uncategorized"]),
                     "ratio": ratio or 0,
                     "views": view_count,
                 }
@@ -641,7 +668,7 @@ def main():
                 "title": info["snippet"]["title"],
                 "channel_id": channel_id,
                 "channel_name": channel_names.get(channel_id, channel_id),
-                "niche": channel_niches.get(channel_id, "uncategorized"),
+                "tags": channel_tags_map.get(channel_id, ["uncategorized"]),
                 "thumbnail": (info["snippet"].get("thumbnails", {}).get("medium") or {}).get("url", ""),
                 "published_at": info["snippet"]["publishedAt"],
                 "views": view_count,
@@ -664,7 +691,7 @@ def main():
                 "generated_at": now_iso,
                 "videos": dashboard_rows,
                 "channels": sorted(set(r["channel_name"] for r in dashboard_rows)),
-                "niches": sorted(set(r["niche"] for r in dashboard_rows)),
+                "niches": sorted(set(t for r in dashboard_rows for t in r["tags"])),
                 "channel_count": len(channels),
             },
             f,
