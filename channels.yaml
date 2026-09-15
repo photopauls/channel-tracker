@@ -473,3 +473,7 @@ channels:
     niche: health
     name: Dan Go
     since: '2025-09-14'
+  - url: https://www.youtube.com/@garyvee/videos
+    niche: business
+    name: Gary Vee
+    since: '2025-09-14'
