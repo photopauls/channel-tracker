@@ -469,3 +469,7 @@ channels:
     niche: random
     name: Charles Duhigg
     since: '2025-09-14'
+  - url: https://www.youtube.com/@coachdango
+    niche: health
+    name: Dan Go
+    since: '2025-09-14'
