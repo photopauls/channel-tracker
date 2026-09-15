@@ -521,3 +521,6 @@ channels:
   - url: https://www.youtube.com/@SandeepSwadia/videos
     niche: random
     since: '2025-09-14'
+  - url: https://www.youtube.com/@DrTessaDamm/videos
+    niche: health
+    since: '2025-09-14'
