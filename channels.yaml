@@ -485,3 +485,7 @@ channels:
     niche: competitors
     name: James Smith
     since: '2025-09-14'
+  - url: https://www.youtube.com/@JeffSu
+    niche: random
+    name: Jeff Su
+    since: '2025-09-14'
