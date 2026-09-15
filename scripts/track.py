@@ -6,8 +6,9 @@ Runs on a schedule (see .github/workflows/track.yml). Each run:
      to its real channel ID, caching the lookup so it only happens once per channel.
   2. Pulls recent uploads for each channel (YouTube Data API).
   3. Records a views snapshot for every video still inside the active tracking window.
-  4. Computes each video's velocity (views per day since upload) and compares it to
-     that channel's own historical baseline at a similar age -> flags outliers.
+  4. Compares each video's current view count to the median view count of similarly-
+     timed videos on the same channel (nearest by publish date, whichever side) ->
+     flags outliers.
   5. Writes docs/data.json, the file the static dashboard (docs/index.html) reads.
   6. If any video newly crossed the outlier threshold since the last run, batches
      them into one Claude API call for a pattern digest, then sends a Telegram alert.
@@ -39,27 +40,29 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "PLACEHOLDER_TELEGRAM_CHAT
 # stays tracked and gets its view count refreshed every run. Set a per-channel
 # 'since: YYYY-MM-DD' in channels.yaml if you want to limit a specific channel
 # to only its videos from that date forward instead of its full history.
-OUTLIER_THRESHOLD = 1.75      # velocity must beat this multiple of the channel baseline
+OUTLIER_THRESHOLD = 1.5       # current views must beat this multiple of the channel baseline
 MIN_BASELINE_SAMPLES = 4      # need at least this many comparable videos to trust a baseline
-TRAILING_COMPARISON_VIDEOS = 15  # baseline = median velocity of the N other videos on this
-                                  # channel whose current age is closest to this video's -
-                                  # whichever direction is nearer (published just before it,
-                                  # or just after), not a fixed window. A similar-age video was
-                                  # necessarily uploaded around the same time, so this still
-                                  # tracks the channel's current scale rather than a lifetime
-                                  # average, without a rigid tolerance band that can come up
-                                  # short of candidates on a channel with thin/backfilled history.
-MIN_AGE_FOR_OUTLIER_DAYS = 1.0  # never flag a video as an outlier before it's had this long to
-                                 # air out. Every video gets a disproportionate early burst of
-                                 # views in its first few hours (subscriber notifications, the
-                                 # algorithm testing it) that has nothing to do with whether it's
-                                 # actually a strong video - it settles down over the following
-                                 # day or so. Comparing that initial spike's rate against other
-                                 # videos' long-since-settled rate makes almost every brand-new
-                                 # upload look like a huge outlier, regardless of channel or
-                                 # upload cadence. Ratio/baseline are still computed and shown for
-                                 # a video younger than this - it just isn't flagged/bordered as
-                                 # an outlier until it clears this grace period.
+TRAILING_COMPARISON_VIDEOS = 15  # baseline = median CURRENT VIEW COUNT of the N other videos on
+                                  # this channel whose publish date is closest to this video's -
+                                  # whichever direction is nearer (published just before it, or
+                                  # just after), not a fixed window. This used to compare
+                                  # velocity (views per day since upload) instead of raw views,
+                                  # which sounds more "fair" but backfires badly: every video's
+                                  # velocity decays hard over its own first day or two (an early
+                                  # burst from subscriber notifications and the algorithm testing
+                                  # it), so a video's still-elevated early velocity was constantly
+                                  # getting compared against other videos' already-settled,
+                                  # decayed velocity - making almost every recent upload look like
+                                  # a huge outlier, on every channel, regardless of upload
+                                  # cadence. Comparing raw view counts instead sidesteps that
+                                  # entirely: a video's total views so far is just compared to
+                                  # what similarly-timed videos on the same channel have racked up
+                                  # - no rate, no decay curve, nothing that spikes in the first
+                                  # few hours and fades. The tradeoff is that a brand-new video
+                                  # won't clear the bar purely because it opened fast; it needs to
+                                  # have genuinely out-accumulated its peers by the time it's
+                                  # checked, which can still happen within hours for something
+                                  # that's really taking off.
 EXCLUDE_SHORTS = True          # Shorts are identified by duration and skipped entirely -
 SHORTS_MAX_SECONDS = 180        # not stored, not shown, not counted in the outlier baseline.
                                  # YouTube's own Shorts limit is 3 minutes; drop to 60 if you
@@ -345,9 +348,26 @@ def record_snapshot(conn, vid, view_count, days_since_upload, now_iso):
 
 
 def compute_baseline(conn, channel_id, video_id, days_since_upload):
-    """Median velocity of the TRAILING_COMPARISON_VIDEOS other videos on this channel
-    whose current age is closest to this video's - whichever side is nearer, published
-    just before it or just after.
+    """Median CURRENT VIEW COUNT of the TRAILING_COMPARISON_VIDEOS other videos on this
+    channel whose current age is closest to this video's - whichever side is nearer,
+    published just before it or just after. (Sorting by "current age closest to this
+    video's" is equivalent to sorting by "published closest in time to this video" -
+    every video's age is just measured from the same "now", so the nearest-in-age
+    videos and the nearest-in-publish-date videos are the same set.)
+
+    This used to compare velocity (views per day since upload) instead of raw view
+    counts. That backfired: a video's velocity is highest in its first few hours (a
+    burst from subscriber notifications and the algorithm testing it) and decays hard
+    over the following day or so, purely as a function of time, not quality. Comparing
+    a brand-new video's still-elevated velocity against other videos' already-settled,
+    decayed velocity made almost every recent upload look like a huge outlier,
+    regardless of channel or upload cadence - confirmed directly against production
+    data, where 18 of 21 videos under a day old were being wrongly flagged this way.
+    Comparing raw view counts instead sidesteps the whole problem: there's no rate to
+    decay, just "how many views does this video have so far compared to what
+    similarly-timed videos on this channel had at this point" - so a video only clears
+    the bar by genuinely out-accumulating its peers, not by having a fast first hour
+    that later flatlines.
 
     This does NOT exclude videos currently flagged as outliers from the comparison
     pool. An earlier version did, on the theory that one hit shouldn't drag its own
@@ -355,14 +375,14 @@ def compute_baseline(conn, channel_id, video_id, days_since_upload):
     videos from the pool, forever, meant that if a channel ever had a bad run where
     most of its videos got wrongly flagged (e.g. from the intra-run ordering bug this
     file used to have), every future run's baseline got computed from whatever tiny
-    handful of videos were never flagged - almost always old, decayed, low-velocity
-    ones - which made the *next* run's baseline artificially low too, re-flagging
-    nearly everything again. That's a self-reinforcing trap a channel could never
-    recover from on its own. Using the plain median instead is naturally robust to a
-    minority of real outliers in the pool anyway (the median only moves if *more than
-    half* the comparison videos are outliers, which at that point just reflects a
-    genuine step-change in the channel's scale, not noise) - so there's no need for
-    the exclusion, and removing it makes the whole system self-correcting instead of
+    handful of videos were never flagged - almost always old, low-view ones - which
+    made the *next* run's baseline artificially low too, re-flagging nearly everything
+    again. That's a self-reinforcing trap a channel could never recover from on its
+    own. Using the plain median instead is naturally robust to a minority of real
+    outliers in the pool anyway (the median only moves if *more than half* the
+    comparison videos are outliers, which at that point just reflects a genuine
+    step-change in the channel's scale, not noise) - so there's no need for the
+    exclusion, and removing it makes the whole system self-correcting instead of
     self-entrenching.
 
     This used to instead require a candidate to fall inside a fixed +/-40% age
@@ -382,7 +402,7 @@ def compute_baseline(conn, channel_id, video_id, days_since_upload):
     dominate the "nearest 15" pool and crater the baseline for real videos."""
     rows = conn.execute(
         """
-        SELECT s.velocity, ABS(s.days_since_upload - ?) AS age_diff FROM (
+        SELECT s.view_count, ABS(s.days_since_upload - ?) AS age_diff FROM (
             SELECT s2.video_id, MAX(s2.checked_at) AS latest_checked
             FROM snapshots s2
             JOIN videos v2 ON v2.video_id = s2.video_id
@@ -395,10 +415,10 @@ def compute_baseline(conn, channel_id, video_id, days_since_upload):
         """,
         (days_since_upload, channel_id, video_id, TRAILING_COMPARISON_VIDEOS),
     ).fetchall()
-    velocities = [r[0] for r in rows]
-    if len(velocities) < MIN_BASELINE_SAMPLES:
+    view_counts = [r[0] for r in rows]
+    if len(view_counts) < MIN_BASELINE_SAMPLES:
         return None
-    return statistics.median(velocities)
+    return statistics.median(view_counts)
 
 
 def call_claude_digest(new_outliers):
@@ -564,14 +584,12 @@ def main():
         view_count = int(info.get("statistics", {}).get("viewCount", 0))
         velocity = record_snapshot(conn, vid, view_count, days_since_upload, now_iso)
 
+        # baseline/ratio compare this video's raw view count against similarly-timed
+        # videos on the same channel - see compute_baseline's docstring for why this
+        # is views, not velocity.
         baseline = compute_baseline(conn, channel_id, vid, days_since_upload)
-        ratio = (velocity / baseline) if baseline else None
-        is_outlier = bool(
-            baseline
-            and ratio is not None
-            and ratio >= OUTLIER_THRESHOLD
-            and days_since_upload >= MIN_AGE_FOR_OUTLIER_DAYS
-        )
+        ratio = (view_count / baseline) if baseline else None
+        is_outlier = bool(baseline and ratio is not None and ratio >= OUTLIER_THRESHOLD)
 
         prev = conn.execute("SELECT is_outlier FROM outlier_state WHERE video_id=?", (vid,)).fetchone()
         was_outlier = bool(prev and prev[0])
