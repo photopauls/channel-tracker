@@ -515,3 +515,6 @@ channels:
   - url: https://www.youtube.com/@RyanDeissOfficial/videos
     niche: business
     since: '2025-09-14'
+  - url: https://www.youtube.com/@SamPiliero/videos
+    niche: random
+    since: '2025-09-14'
