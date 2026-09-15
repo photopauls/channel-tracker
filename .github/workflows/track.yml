@@ -10,6 +10,19 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  # Only one run of this workflow at a time. Without this, a manually
+  # triggered run and a scheduled run (or two manual triggers back to back)
+  # could overlap - both would check out the same starting point, both would
+  # commit their own new data/tracker.db + docs/data.json, and whichever
+  # finished second would get its push rejected because the remote had
+  # already moved (exactly the "fetch first" / non-fast-forward error this
+  # fixes). `cancel-in-progress: false` means an overlapping run queues and
+  # waits its turn instead of getting cancelled outright, so no run's work is
+  # thrown away.
+  group: track-youtube-channels
+  cancel-in-progress: false
+
 jobs:
   track:
     runs-on: ubuntu-latest
@@ -36,4 +49,9 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add data/tracker.db docs/data.json
           git diff --cached --quiet || git commit -m "Update tracker data [skip ci]"
+          # Someone may have pushed a commit (e.g. a code change, or channels.yaml
+          # edited from the dashboard) while this run was busy calling the YouTube
+          # API - rebase our data commit on top of whatever's newest before pushing,
+          # instead of failing outright with a rejected/non-fast-forward push.
+          git pull --rebase --autostash origin main
           git push

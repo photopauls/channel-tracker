@@ -49,6 +49,17 @@ TRAILING_COMPARISON_VIDEOS = 15  # baseline = median velocity of the N other vid
                                   # tracks the channel's current scale rather than a lifetime
                                   # average, without a rigid tolerance band that can come up
                                   # short of candidates on a channel with thin/backfilled history.
+MIN_AGE_FOR_OUTLIER_DAYS = 1.0  # never flag a video as an outlier before it's had this long to
+                                 # air out. Every video gets a disproportionate early burst of
+                                 # views in its first few hours (subscriber notifications, the
+                                 # algorithm testing it) that has nothing to do with whether it's
+                                 # actually a strong video - it settles down over the following
+                                 # day or so. Comparing that initial spike's rate against other
+                                 # videos' long-since-settled rate makes almost every brand-new
+                                 # upload look like a huge outlier, regardless of channel or
+                                 # upload cadence. Ratio/baseline are still computed and shown for
+                                 # a video younger than this - it just isn't flagged/bordered as
+                                 # an outlier until it clears this grace period.
 EXCLUDE_SHORTS = True          # Shorts are identified by duration and skipped entirely -
 SHORTS_MAX_SECONDS = 180        # not stored, not shown, not counted in the outlier baseline.
                                  # YouTube's own Shorts limit is 3 minutes; drop to 60 if you
@@ -555,7 +566,12 @@ def main():
 
         baseline = compute_baseline(conn, channel_id, vid, days_since_upload)
         ratio = (velocity / baseline) if baseline else None
-        is_outlier = bool(baseline and ratio is not None and ratio >= OUTLIER_THRESHOLD)
+        is_outlier = bool(
+            baseline
+            and ratio is not None
+            and ratio >= OUTLIER_THRESHOLD
+            and days_since_upload >= MIN_AGE_FOR_OUTLIER_DAYS
+        )
 
         prev = conn.execute("SELECT is_outlier FROM outlier_state WHERE video_id=?", (vid,)).fetchone()
         was_outlier = bool(prev and prev[0])
