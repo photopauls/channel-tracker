@@ -91,6 +91,8 @@
   .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; }
   .ribbon { position: absolute; top: 10px; left: 10px; background: var(--outlier); color: #1a1200; font-weight: 800;
     font-size: 11px; padding: 4px 9px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,.8); color: #fff;
+    font-size: 11px; font-weight: 700; padding: 2px 5px; border-radius: 4px; line-height: 1.4; }
   .fav-btn { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
     background: rgba(11,13,18,.65); border: 1px solid rgba(255,255,255,.15); color: #cfd3dd; font-size: 15px;
     display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: .15s; }
@@ -313,6 +315,7 @@ function paintGrid() {
     card.innerHTML = `
       <div class="thumb-wrap">
         <img class="thumb" src="${v.thumbnail}" loading="lazy" alt="">
+        ${v.duration ? `<span class="duration-badge">${v.duration}</span>` : ''}
         ${v.is_outlier ? `<span class="ribbon">${v.ratio}× baseline</span>` : ''}
         <button class="fav-btn${favorites.has(v.video_id) ? ' active' : ''}" data-vid="${v.video_id}" title="Toggle favourite">${favorites.has(v.video_id) ? '★' : '☆'}</button>
       </div>

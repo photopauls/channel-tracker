@@ -117,6 +117,7 @@ def init_db(conn):
     )
     conn.commit()
     _ensure_column(conn, "videos", "is_short", "INTEGER DEFAULT 0")
+    _ensure_column(conn, "videos", "duration_seconds", "INTEGER")
     conn.commit()
 
 
@@ -321,20 +322,38 @@ def fetch_stats(video_ids):
     return results
 
 
+def format_duration(seconds):
+    """Formats a duration in seconds as YouTube itself does: M:SS under an hour,
+    H:MM:SS at or above one. Returns None if we don't have a duration for this
+    video (e.g. the API omitted contentDetails for it)."""
+    if seconds is None:
+        return None
+    seconds = int(seconds)
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
+
+
 def parse_dt(s):
     return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
 
 
-def upsert_video(conn, channel_id, vid, info, is_short):
+def upsert_video(conn, channel_id, vid, info, is_short, duration_seconds):
     snippet = info["snippet"]
     thumb = (snippet.get("thumbnails", {}).get("medium") or snippet.get("thumbnails", {}).get("default") or {}).get(
         "url", ""
     )
+    # ON CONFLICT overwrites title/thumbnail_url/duration_seconds every run, so if a
+    # creator renames a video or swaps its thumbnail after upload, the dashboard picks
+    # that up on the very next run - nothing here is "set once at creation and forgotten".
     conn.execute(
-        """INSERT INTO videos (video_id, channel_id, title, published_at, thumbnail_url, is_short) VALUES (?,?,?,?,?,?)
+        """INSERT INTO videos (video_id, channel_id, title, published_at, thumbnail_url, is_short, duration_seconds)
+           VALUES (?,?,?,?,?,?,?)
            ON CONFLICT(video_id) DO UPDATE SET title=excluded.title, thumbnail_url=excluded.thumbnail_url,
-             is_short=excluded.is_short""",
-        (vid, channel_id, snippet.get("title", ""), snippet.get("publishedAt"), thumb, int(is_short)),
+             is_short=excluded.is_short, duration_seconds=excluded.duration_seconds""",
+        (vid, channel_id, snippet.get("title", ""), snippet.get("publishedAt"), thumb, int(is_short), duration_seconds),
     )
 
 
@@ -571,7 +590,7 @@ def main():
 
         duration_seconds = parse_duration_seconds(info.get("contentDetails", {}).get("duration"))
         is_short = bool(duration_seconds is not None and duration_seconds <= SHORTS_MAX_SECONDS)
-        upsert_video(conn, channel_id, vid, info, is_short)
+        upsert_video(conn, channel_id, vid, info, is_short, duration_seconds)
 
         if EXCLUDE_SHORTS and is_short:
             # Classified and stored (so we don't keep re-discovering it every run),
@@ -626,6 +645,7 @@ def main():
                 "thumbnail": (info["snippet"].get("thumbnails", {}).get("medium") or {}).get("url", ""),
                 "published_at": info["snippet"]["publishedAt"],
                 "views": view_count,
+                "duration": format_duration(duration_seconds),
                 "days_since_upload": round(days_since_upload, 1),
                 "velocity": round(velocity, 1),
                 "baseline": round(baseline, 1) if baseline else None,
