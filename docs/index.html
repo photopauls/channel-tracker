@@ -113,6 +113,27 @@
   .stat-item .val.ratio-hi { color: var(--outlier); }
   .stat-item .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 
+  .view-tabs { margin-top: 4px; }
+
+  .channels-view-wrap { max-width: 1400px; margin: 0 auto; padding: 22px 28px 48px; display: flex;
+    flex-direction: column; gap: 22px; }
+  .channel-group-title { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+    margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .channel-group-count { background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+    padding: 1px 8px; font-size: 11px; }
+  .channel-group-rows { display: flex; flex-direction: column; gap: 6px; }
+  .channel-fav-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .channel-fav-btn { width: 30px; height: 30px; border-radius: 50%; background: var(--panel-2);
+    border: 1px solid var(--border); color: #cfd3dd; font-size: 15px; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; padding: 0; flex-shrink: 0; }
+  .channel-fav-btn:hover { border-color: #ffd166; color: #ffd166; }
+  .channel-fav-btn.active { background: #ffd166; border-color: #ffd166; color: #1a1200; }
+  .channel-fav-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .channel-fav-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .channel-fav-tags .niche-tag { background: var(--panel-2); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+  .channel-fav-count { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
   .empty, .loading { max-width: 1400px; margin: 0 auto; padding: 80px 28px; text-align: center; color: var(--muted); font-size: 14px; }
   .pagination { max-width: 1400px; margin: -12px auto 48px; padding: 0 28px; display: flex; align-items: center;
     justify-content: center; gap: 14px; }
@@ -126,63 +147,79 @@
   <h1>Channel Tracker</h1>
   <div class="tagline" id="tagline">Loading…</div>
   <div class="stats-row" id="statsRow"></div>
+  <div class="pill-row view-tabs" id="viewTabs">
+    <button class="pill active" data-view="videos">Videos</button>
+    <button class="pill" data-view="channels">Channels</button>
+  </div>
 </header>
 
-<div class="controls">
-  <input type="search" id="search" placeholder="Search titles…">
-  <select id="channelFilter"><option value="">All channels</option></select>
-  <select id="sortBy">
-    <option value="published_desc">Newest first</option>
-    <option value="ratio_desc">Biggest outperformance</option>
-    <option value="views_desc">Most views</option>
-  </select>
-  <div class="pill-row" id="nichePills"></div>
-  <label class="toggle">
-    <input type="checkbox" id="outliersOnly">
-    <span class="switch"></span>
-    Outliers only
-  </label>
-  <label class="toggle">
-    <input type="checkbox" id="favoritesOnly">
-    <span class="switch"></span>
-    Favourites only
-  </label>
-</div>
+<div id="videosView">
+  <div class="controls">
+    <input type="search" id="search" placeholder="Search titles…">
+    <select id="channelFilter"><option value="">All channels</option></select>
+    <select id="sortBy">
+      <option value="published_desc">Newest first</option>
+      <option value="ratio_desc">Biggest outperformance</option>
+      <option value="views_desc">Most views</option>
+    </select>
+    <div class="pill-row" id="nichePills"></div>
+    <label class="toggle">
+      <input type="checkbox" id="outliersOnly">
+      <span class="switch"></span>
+      Outliers only
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="favoritesOnly">
+      <span class="switch"></span>
+      Favourites only
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="favChannelsOnly">
+      <span class="switch"></span>
+      Favourite channels only
+    </label>
+  </div>
 
-<div class="manage-wrap">
-  <button id="manageToggle">⚙ Manage channels</button>
-  <div class="manage-body" id="manageBody" hidden>
-    <div class="manage-row">
-      <input type="password" id="ghToken" placeholder="GitHub personal access token (repo scope)">
-      <button class="primary" id="saveToken">Save token</button>
-      <button class="secondary" id="clearToken">Forget token</button>
-    </div>
-    <div class="manage-status" id="tokenStatus">
-      Token is stored only in this browser and used to edit channels.yaml directly on GitHub.
-      <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">Create one here</a> —
-      classic token, "repo" scope is enough.
-    </div>
+  <div class="manage-wrap">
+    <button id="manageToggle">⚙ Manage channels</button>
+    <div class="manage-body" id="manageBody" hidden>
+      <div class="manage-row">
+        <input type="password" id="ghToken" placeholder="GitHub personal access token (repo scope)">
+        <button class="primary" id="saveToken">Save token</button>
+        <button class="secondary" id="clearToken">Forget token</button>
+      </div>
+      <div class="manage-status" id="tokenStatus">
+        Token is stored only in this browser and used to edit channels.yaml directly on GitHub.
+        <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">Create one here</a> —
+        classic token, "repo" scope is enough.
+      </div>
 
-    <div class="manage-row add-row">
-      <input type="text" id="newUrl" placeholder="Channel URL, e.g. https://youtube.com/@handle">
-      <input type="text" id="newTags" placeholder="Tags, comma separated">
-      <input type="text" id="newName" placeholder="Name (optional)">
-      <input type="text" id="newSince" placeholder="Since YYYY-MM-DD (optional)">
-      <button class="primary" id="addChannelBtn">Add channel</button>
-    </div>
+      <div class="manage-row add-row">
+        <input type="text" id="newUrl" placeholder="Channel URL, e.g. https://youtube.com/@handle">
+        <input type="text" id="newTags" placeholder="Tags, comma separated">
+        <input type="text" id="newName" placeholder="Name (optional)">
+        <input type="text" id="newSince" placeholder="Since YYYY-MM-DD (optional)">
+        <button class="primary" id="addChannelBtn">Add channel</button>
+      </div>
 
-    <div class="manage-msg" id="manageMsg"></div>
-    <datalist id="nicheOptions"></datalist>
-    <div class="channel-list" id="channelList"></div>
+      <div class="manage-msg" id="manageMsg"></div>
+      <datalist id="nicheOptions"></datalist>
+      <button class="secondary" id="showChannelListBtn">Show tracked channels ▾</button>
+      <div class="channel-list" id="channelList" hidden></div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">No videos match these filters.</div>
+  <div class="pagination" id="pagination" style="display:none">
+    <button id="prevPageBtn">← Prev</button>
+    <span class="page-info" id="pageInfo"></span>
+    <button id="nextPageBtn">Next →</button>
   </div>
 </div>
 
-<div class="grid" id="grid"></div>
-<div class="empty" id="empty" style="display:none">No videos match these filters.</div>
-<div class="pagination" id="pagination" style="display:none">
-  <button id="prevPageBtn">← Prev</button>
-  <span class="page-info" id="pageInfo"></span>
-  <button id="nextPageBtn">Next →</button>
+<div id="channelsView" hidden>
+  <div class="channels-view-wrap" id="channelsList"></div>
 </div>
 
 <script>
@@ -249,11 +286,120 @@ function toggleFavorite(vid) {
   commitFavorites();
 }
 
+// Favourite CHANNELS work exactly like favourite videos above (local storage
+// first, synced to a small committed JSON file once a token's saved) - just
+// keyed by channel name instead of video ID, and toggled from the "Channels"
+// view rather than from a button on each card. "Favourite channels only" in
+// the Videos view then shows every video from any favourited channel.
+function getFavoriteChannels() {
+  try { return new Set(JSON.parse(localStorage.getItem('favChannels') || '[]')); } catch (e) { return new Set(); }
+}
+function saveFavoriteChannelsLocal(set) {
+  try { localStorage.setItem('favChannels', JSON.stringify([...set])); } catch (e) {}
+}
+let favoriteChannels = getFavoriteChannels();
+
+async function syncFavoriteChannelsFromRepo() {
+  try {
+    const res = await fetch('favorite_channels.json', { cache: 'no-store' });
+    if (res.ok) {
+      const remote = await res.json();
+      if (Array.isArray(remote)) {
+        remote.forEach(name => favoriteChannels.add(name));
+        saveFavoriteChannelsLocal(favoriteChannels);
+      }
+    }
+  } catch (e) { /* offline, or favorite_channels.json doesn't exist yet */ }
+}
+
+async function commitFavoriteChannels() {
+  if (!getToken()) return;
+  try {
+    const { sha } = await ghGetJsonFile(FAVORITE_CHANNELS_PATH);
+    await ghPutJsonFile(FAVORITE_CHANNELS_PATH, [...favoriteChannels].sort(), sha, 'Update favourite channels');
+  } catch (e) {
+    console.warn('Could not sync favourite channels to GitHub:', e.message);
+  }
+}
+
+function toggleFavoriteChannel(name) {
+  if (favoriteChannels.has(name)) favoriteChannels.delete(name); else favoriteChannels.add(name);
+  saveFavoriteChannelsLocal(favoriteChannels);
+  const favStat = document.getElementById('favChannelsStatNum');
+  if (favStat) favStat.textContent = favoriteChannels.size;
+  renderChannelsView();
+  const favChannelsOnly = document.getElementById('favChannelsOnly');
+  if (favChannelsOnly && favChannelsOnly.checked) render();
+  commitFavoriteChannels();
+}
+
+// ---- channels view (grouped by tag, with the favourite-channel toggle) ----
+function computeChannelIndex() {
+  const idx = new Map(); // channel name -> { tags: Set, count: number }
+  DATA.videos.forEach(v => {
+    if (!idx.has(v.channel_name)) idx.set(v.channel_name, { tags: new Set(), count: 0 });
+    const entry = idx.get(v.channel_name);
+    (v.tags && v.tags.length ? v.tags : ['uncategorized']).forEach(t => entry.tags.add(t));
+    entry.count++;
+  });
+  return idx;
+}
+
+function renderChannelsView() {
+  const container = document.getElementById('channelsList');
+  const idx = computeChannelIndex();
+
+  const byTag = new Map();
+  idx.forEach((info, name) => {
+    [...info.tags].forEach(t => {
+      if (!byTag.has(t)) byTag.set(t, []);
+      byTag.get(t).push(name);
+    });
+  });
+
+  const tags = [...byTag.keys()].sort();
+  container.innerHTML = tags.map(tag => {
+    const names = byTag.get(tag).sort((a, b) => a.localeCompare(b));
+    return `
+      <div class="channel-group">
+        <h3 class="channel-group-title">${escapeHtml(tag)} <span class="channel-group-count">${names.length}</span></h3>
+        <div class="channel-group-rows">
+          ${names.map(name => {
+            const info = idx.get(name);
+            const isFav = favoriteChannels.has(name);
+            return `
+              <div class="channel-fav-row">
+                <button class="channel-fav-btn${isFav ? ' active' : ''}" data-channel="${escapeHtml(name)}" title="Toggle favourite channel">${isFav ? '★' : '☆'}</button>
+                <span class="channel-fav-name">${escapeHtml(name)}</span>
+                <span class="channel-fav-tags">${[...info.tags].map(t => `<span class="niche-tag">${escapeHtml(t)}</span>`).join('')}</span>
+                <span class="channel-fav-count">${info.count} video${info.count === 1 ? '' : 's'}</span>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('') || '<div class="manage-empty">No channels tracked yet.</div>';
+
+  container.querySelectorAll('.channel-fav-btn').forEach(btn => {
+    btn.onclick = () => toggleFavoriteChannel(btn.dataset.channel);
+  });
+}
+
+function setView(view) {
+  document.getElementById('videosView').hidden = view !== 'videos';
+  document.getElementById('channelsView').hidden = view !== 'channels';
+  document.querySelectorAll('.view-tabs .pill').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if (view === 'channels') renderChannelsView();
+}
+document.querySelectorAll('.view-tabs .pill').forEach(b => {
+  b.onclick = () => setView(b.dataset.view);
+});
+
 async function load() {
   try {
     const [res] = await Promise.all([
       fetch('data.json', { cache: 'no-store' }),
       syncFavoritesFromRepo(),
+      syncFavoriteChannelsFromRepo(),
     ]);
     DATA = await res.json();
   } catch (e) {
@@ -276,6 +422,7 @@ async function load() {
     <div class="stat"><div class="num outlier-num">${outlierCount}</div><div class="label">Current outliers</div></div>
     <div class="stat"><div class="num">${DATA.niches.length}</div><div class="label">Tags</div></div>
     <div class="stat"><div class="num" id="favStatNum" style="color:#ffd166">${favorites.size}</div><div class="label">Favourited</div></div>
+    <div class="stat"><div class="num" id="favChannelsStatNum" style="color:#ffd166">${favoriteChannels.size}</div><div class="label">Favourite channels</div></div>
   `;
 
   const chSel = document.getElementById('channelFilter');
@@ -318,6 +465,7 @@ function render() {
   const channel = document.getElementById('channelFilter').value;
   const outliersOnly = document.getElementById('outliersOnly').checked;
   const favoritesOnly = document.getElementById('favoritesOnly').checked;
+  const favChannelsOnly = document.getElementById('favChannelsOnly').checked;
   const sortBy = document.getElementById('sortBy').value;
   const q = document.getElementById('search').value.trim().toLowerCase();
 
@@ -326,6 +474,7 @@ function render() {
     (activeNiches.size === 0 || (v.tags || []).some(t => activeNiches.has(t))) &&
     (!outliersOnly || v.is_outlier) &&
     (!favoritesOnly || favorites.has(v.video_id)) &&
+    (!favChannelsOnly || favoriteChannels.has(v.channel_name)) &&
     (!q || v.title.toLowerCase().includes(q))
   );
 
@@ -407,6 +556,7 @@ function escapeHtml(s) {
 ['channelFilter', 'sortBy'].forEach(id => document.getElementById(id).addEventListener('change', render));
 document.getElementById('outliersOnly').addEventListener('change', render);
 document.getElementById('favoritesOnly').addEventListener('change', render);
+document.getElementById('favChannelsOnly').addEventListener('change', render);
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('grid').addEventListener('click', (e) => {
   const btn = e.target.closest('.fav-btn');
@@ -427,6 +577,7 @@ const FAVORITES_PATH = "docs/favorites.json"; // sits next to data.json, so anyo
                                                 // published site can read it with no token -
                                                 // only WRITING a change needs the GitHub token,
                                                 // same as channel management below.
+const FAVORITE_CHANNELS_PATH = "docs/favorite_channels.json"; // same deal, for favourite channels
 
 function getToken() { try { return localStorage.getItem('ghToken') || ''; } catch (e) { return ''; } }
 function setToken(t) { try { localStorage.setItem('ghToken', t); } catch (e) {} }
@@ -635,7 +786,13 @@ document.getElementById('addChannelBtn').onclick = addChannel;
 document.getElementById('manageToggle').onclick = () => {
   const body = document.getElementById('manageBody');
   body.hidden = !body.hidden;
-  if (!body.hidden) refreshChannelList();
+};
+document.getElementById('showChannelListBtn').onclick = () => {
+  const listEl = document.getElementById('channelList');
+  const btn = document.getElementById('showChannelListBtn');
+  listEl.hidden = !listEl.hidden;
+  btn.textContent = listEl.hidden ? 'Show tracked channels ▾' : 'Hide tracked channels ▴';
+  if (!listEl.hidden) refreshChannelList();
 };
 document.getElementById('saveToken').onclick = () => {
   const t = document.getElementById('ghToken').value.trim();
