@@ -1,23 +1,8 @@
-# List every channel you want tracked here.
-#
-# Just paste the channel's URL — any format works: /@handle, /@handle/videos,
-# /channel/UC..., or an old /c/Name or /user/Name link. The script resolves it
-# to the channel's real ID automatically on first run and caches the result,
-# so you never have to go hunting for channel IDs by hand.
-#
-# - url: the channel URL, pasted as-is
-# - tags: a list of your own grouping labels (used for the dashboard filter and
-#     for spotting cross-tag patterns) - a channel can have more than one, e.g.
-#       tags: ["hairloss", "competitors"]
-#     Keep these consistent, e.g. always "hairloss" not sometimes "hair-loss".
-# - niche: the old single-label field - still works exactly as before if you'd
-#     rather not switch existing entries over. A channel can have either, or
-#     both (they just get merged).
-# - name: optional — if you leave it out, the script fills it in from
-#     YouTube automatically the first time it resolves the channel
-# - since: optional — leave it out to track a channel's ENTIRE history.
-#     Set it to a date ("YYYY-MM-DD") to limit that one channel to only its
-#     videos from that date forward instead.
+# Managed by the dashboard's "Manage channels" panel - also editable by hand.
+# Paste a channel URL (any format: @handle, /channel/UC..., /c/Name, /user/Name).
+# tags = your own grouping labels, a channel can have more than one. name is optional (auto-filled from YouTube if left out).
+# since: YYYY-MM-DD is optional - limits that one channel to videos from that date forward;
+# leave it out to track a channel's entire history.
 
 channels:
   - url: https://www.youtube.com/@BlackMensBeard/videos
@@ -545,3 +530,6 @@ channels:
   - url: https://www.youtube.com/@TimKoa/videos
     niche: random
     since: '2025-09-14'
+  - url: https://www.youtube.com/@heyDominik/videos
+    tags:
+      - business
