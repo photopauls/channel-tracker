@@ -2,9 +2,9 @@ name: Track YouTube Channels
 
 on:
   schedule:
-    # Every 6 hours. Edit the cron below to change frequency (fine to go hourly -
+    # Every 12 hours. Edit the cron below to change frequency (fine to go hourly -
     # YouTube's free quota easily covers even 150 channels at this rate).
-    - cron: "0 */6 * * *"
+    - cron: "0 */12 * * *"
   workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
 
 permissions:
