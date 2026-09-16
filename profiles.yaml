@@ -26,15 +26,80 @@
 
 profiles:
   - name: "My channel"
-    tags: ["all"]
+    tags: ["all"]   # replace with the specific channels.yaml tag(s) for your own competitor
+                     # set if you want this scoped tighter than "every tracked channel"
     description: |
-      Replace this with a real description of your own channel: the niche,
-      who watches it and why, the tone/voice you write in, and a few of your
-      own titles that have actually performed well (paste them in - real
-      examples teach the pattern far better than a description of the style).
-
+      Channel: helps businesses get clients through YouTube - the audience
+      is business owners and service providers who want to use YouTube as a
+      lead-gen/sales channel, not hobbyist creators chasing views for their
+      own sake. Every title should read as speaking to a BUYER (someone who
+      might hire me or buy a course/service), not a fellow YouTuber.
+ 
+      Buyer-first language (from an analysis of Ed Lawrence's channel,
+      comparing his titles before vs after he adopted a buyer-first
+      strategy - view counts held steady or ticked up despite narrowing the
+      language, so this isn't a reach tradeoff):
+      - Lean on "business"/"businesses" as the explicit noun being spoken
+        to, instead of "YouTuber" or "creator".
+      - Use "sales" as the promised payoff, instead of vaguer "money" or
+        "growth" words.
+      - Pair "system" with "exact"/"exactly" ("the exact system to...") to
+        signal a replicable process, not luck or talent.
+      - "Copy this..." as an imperative hook - implies low effort AND
+        pre-proven results.
+      - Name the buyer's "problem" directly rather than a vague benefit.
+      - Use "buyers"/"viewers" occasionally (not every title) as a distinct
+        content pillar.
+      - Keep "YouTube" itself in most titles - it's platform/SEO context,
+        not a buyer filter, so it stays even as generic creator words drop.
+      - Pull back on generic "views", "videos", "money", "YouTuber" language
+        - that attracts hobbyists rather than buyers.
+ 
+      Packaging patterns worth testing (from a competitor grid in the
+      business/YouTube-growth niche, plus one creator's full 100-title
+      history cross-referenced against views):
+      - Lead with a claim about the viewer's belief, behavior, or a named
+        mechanism - not a raw outcome number - then use the number as proof
+        INSIDE the same title, not as the hook itself. On one channel's
+        data, the outlier titles (10-40x the channel's median views) all led
+        with a named mechanism ("you're wasting 81% of your time", "i
+        removed my limiting beliefs") rather than the money figure, even
+        though a specific number is nearly always present somewhere in the
+        title as the second beat.
+      - Contrarian/myth-busting framing ("X doesn't matter", "X is dead",
+        "the real danger of X") - shows up across multiple unrelated
+        channels in this niche, so it's a durable pattern, not one
+        creator's quirk.
+      - Hyper-specific, odd (non-round) numbers read as more credible than
+        round claims - "1256 qualified leads for $0.27" beats "thousands of
+        leads"; same for days/minutes/percentages.
+      - "(Without X)" as benefit + objection-handler in one - "(Without
+        Sales Calls)", "(Without Ads or Going Viral)", "(Without a Big
+        Audience)".
+      - First-person proof narrative - "How I Make...", "If I had 0
+        Subscribers, Here's How I'd Make $1M" - framed as documented case
+        study, not generic advice.
+      - Ease/simplicity against expectation - "It's Boring, But...", "You
+        Only Need 2 Videos", "Basically Cheating".
+      - Outcome + short timeframe - "$1M in 12 Months", makes the result
+        feel both achievable and urgent.
+      - A two-tier title/thumbnail structure: a short 2-4 word curiosity
+        phrase dominates the thumbnail, the fuller explanatory claim
+        carries the tension-resolution in the title itself.
+      - "Copy this..." replicability framing, and borrowing a recognizable
+        named authority (a known figure in the space) to lend credibility
+        - both common enough across unrelated niches to test deliberately.
+      - Loss-aversion/danger hooks ("it's a trap", "YouTube is RIGGED") as
+        an alternative to plain curiosity.
+ 
+      Replace/add to this over time with my own channel's actual
+      best-performing titles once there's real data - real examples from
+      MY channel will always teach the pattern better than someone else's,
+      this is a starting point drawn from competitor research, not a
+      substitute for testing against my own results.
+ 
   - name: "Brandon - Black Men's Beard (hair loss)"
-    tags: ["hairloss"]
+    tags: ["hairloss", "health"]
     description: |
       Black Men's Beard (BMB). Audience: Black men noticing early hair loss
       or a receding hairline, often self-conscious about it and looking for
