@@ -1,4 +1,3 @@
-"""
 Weekly title-suggestion generator.
 
 Runs on its own schedule (.github/workflows/weekly_titles.yml), separately
