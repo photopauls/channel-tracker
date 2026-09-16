@@ -13,11 +13,6 @@ Runs on a schedule (see .github/workflows/track.yml). Each run:
   6. If any video newly crossed the outlier threshold since the last run, batches
      them into one Claude API call for a pattern digest, then sends a Telegram alert.
 
-A separate weekly job (scripts/weekly_titles.py, its own schedule in
-.github/workflows/weekly_titles.yml) reads the flagged_ratio/flagged_views
-snapshot this script records on outlier_state below and turns the past week's
-outliers into title suggestions for your own channel(s) - see that file.
-
 All secrets are read from environment variables (set as GitHub Actions secrets).
 Nothing here runs API calls at import time, so it's safe to read even before you've
 filled in real keys.
@@ -123,14 +118,6 @@ def init_db(conn):
     conn.commit()
     _ensure_column(conn, "videos", "is_short", "INTEGER DEFAULT 0")
     _ensure_column(conn, "videos", "duration_seconds", "INTEGER")
-    # Snapshot of the ratio/view count AT THE MOMENT a video was first flagged as
-    # an outlier - lets scripts/weekly_titles.py (or anything else) look back at
-    # "what outperformed this week" without needing to recompute a historical
-    # baseline. Only ever written on the same not-outlier -> outlier transition
-    # that sets first_flagged_at, so it stays a snapshot of that moment, not a
-    # running value that drifts as views keep climbing afterwards.
-    _ensure_column(conn, "outlier_state", "flagged_ratio", "REAL")
-    _ensure_column(conn, "outlier_state", "flagged_views", "INTEGER")
     conn.commit()
 
 
@@ -665,26 +652,15 @@ def main():
 
         prev = conn.execute("SELECT is_outlier FROM outlier_state WHERE video_id=?", (vid,)).fetchone()
         was_outlier = bool(prev and prev[0])
-        just_flagged = is_outlier and not was_outlier
         conn.execute(
-            """INSERT INTO outlier_state (video_id, is_outlier, first_flagged_at, flagged_ratio, flagged_views)
-               VALUES (?,?,?,?,?)
+            """INSERT INTO outlier_state (video_id, is_outlier, first_flagged_at) VALUES (?,?,?)
                ON CONFLICT(video_id) DO UPDATE SET
                  is_outlier=excluded.is_outlier,
                  first_flagged_at = CASE
                    WHEN excluded.is_outlier=1 AND outlier_state.is_outlier=0 THEN excluded.first_flagged_at
                    ELSE outlier_state.first_flagged_at
-                 END,
-                 flagged_ratio = CASE
-                   WHEN excluded.is_outlier=1 AND outlier_state.is_outlier=0 THEN excluded.flagged_ratio
-                   ELSE outlier_state.flagged_ratio
-                 END,
-                 flagged_views = CASE
-                   WHEN excluded.is_outlier=1 AND outlier_state.is_outlier=0 THEN excluded.flagged_views
-                   ELSE outlier_state.flagged_views
                  END""",
-            (vid, int(is_outlier), now_iso if just_flagged else None, ratio if just_flagged else None,
-             view_count if just_flagged else None),
+            (vid, int(is_outlier), now_iso if (is_outlier and not was_outlier) else None),
         )
 
         if is_outlier and not was_outlier:

@@ -219,49 +219,6 @@ video from any channel you've favourited — handy for a quick feed of just the
 handful of channels you actually care about, cutting across whatever tags
 they're filed under.
 
-## Weekly title suggestions
-
-A separate weekly job turns the past week's outliers into title ideas for
-your own channel(s) — including client channels, each judged only against
-the tags relevant to them.
-
-It runs from its own scheduled workflow
-(`.github/workflows/weekly_titles.yml`, Mondays at 08:00 UTC by default,
-also runnable on demand from the Actions tab), completely independent of the
-main tracker. It has to run this way rather than live in the dashboard
-itself: the dashboard is a static page with no backend, and calling Claude
-directly from the browser would mean putting your Anthropic API key in the
-page's JavaScript, where anyone could read it out of dev tools and run up
-charges on your account — the same reasoning that keeps the GitHub token
-out of the page's own source. The weekly job runs the same way the existing
-outlier digest does: server-side, in GitHub Actions, with `ANTHROPIC_API_KEY`
-read from a repo secret. It never calls the YouTube API at all — it works
-entirely from what's already in `data/tracker.db` — so it costs no YouTube
-quota no matter how often it runs.
-
-Set up `profiles.yaml` at the repo root with one entry per channel you want
-suggestions for — your own, plus any client's. Each profile needs:
-
-- `name` — a label, shown on the dashboard.
-- `tags` — which of your `channels.yaml` tags feed this profile (e.g.
-  `["hairloss"]` for a client whose niche is tagged that way). Use `["all"]`
-  to pull outliers from every tracked channel regardless of tag.
-- `description` — free text about the channel: its audience, its tone, and
-  ideally a few of its own titles that have actually performed well. The
-  more specific this is, the better the suggestions — real example titles
-  teach the pattern far better than adjectives describing the style.
-
-Every week, for each profile, the job pulls every video across your whole
-tracked list that got newly flagged as an outlier in the trailing 7 days,
-keeps only the ones matching that profile's tags, and asks Claude for a
-batch of title ideas written in that channel's own voice — each with a note
-on which outlier it drew from and why the underlying hook should transfer.
-Results land in `docs/title_suggestions.json` and show up on the
-dashboard's **Suggestions** tab, one card per profile, with the source
-outliers listed underneath each one so you can see exactly what inspired
-it. If a profile has no matching outliers that week, or `ANTHROPIC_API_KEY`
-isn't set yet, it just shows that plainly instead of failing.
-
 ## Turning the Claude digest on/off
 
 The per-run pattern digest (step 6 above — one Claude call whenever new
