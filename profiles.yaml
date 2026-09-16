@@ -1,0 +1,45 @@
+# Profiles for the weekly title-suggestion job (scripts/weekly_titles.py).
+#
+# Each profile is a channel you want title ideas FOR - your own, or a
+# client's. Every week, the job looks at every video that got newly flagged
+# as an outlier in the trailing 7 days (across your whole tracked list),
+# keeps only the ones matching this profile's tags, and asks Claude to turn
+# whatever's working into title ideas written for THIS channel specifically.
+#
+# Fields:
+#   name        - just a label, shows up on the dashboard's Suggestions tab.
+#   tags        - which of your channels.yaml tags feed this profile. A
+#                 video only gets considered if at least one of its channel's
+#                 tags is in this list. Use the special value "all" to pull
+#                 from every tracked channel regardless of tag (useful for a
+#                 broad channel that doesn't map neatly onto one niche).
+#   description - free text: describe the channel, its audience, its tone,
+#                 what's worked before, anything Claude should know to write
+#                 in this channel's voice rather than a generic one. The more
+#                 specific, the better the titles - a few real example titles
+#                 that have performed well is worth more than a paragraph of
+#                 adjectives.
+#
+# Add, remove, or edit profiles any time and just push - no code changes
+# needed. If this file is empty or missing, the weekly job exits quietly and
+# writes an empty result rather than failing.
+
+profiles:
+  - name: "My channel"
+    tags: ["all"]
+    description: |
+      Replace this with a real description of your own channel: the niche,
+      who watches it and why, the tone/voice you write in, and a few of your
+      own titles that have actually performed well (paste them in - real
+      examples teach the pattern far better than a description of the style).
+
+  - name: "Brandon - Black Men's Beard (hair loss)"
+    tags: ["hairloss"]
+    description: |
+      Black Men's Beard (BMB). Audience: Black men noticing early hair loss
+      or a receding hairline, often self-conscious about it and looking for
+      real, practical answers rather than being sold to. Tone: direct,
+      knowledgeable, myth-busting - calls out bad advice and product hype,
+      backs claims with real research. Replace this with more specifics:
+      the channel's actual best-performing titles, any format the channel
+      leans on, topics to avoid.

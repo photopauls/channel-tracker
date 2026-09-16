@@ -134,6 +134,23 @@
   .channel-fav-tags .niche-tag { background: var(--panel-2); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
   .channel-fav-count { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
+  .suggestion-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .suggestion-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .suggestion-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+  .suggestion-meta { color: var(--muted); font-size: 12px; }
+  .suggestion-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .suggestion-tags .niche-tag { background: var(--panel-2); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+  .suggestion-body { white-space: pre-wrap; font-size: 13px; line-height: 1.55; color: var(--text); }
+  .suggestion-sources { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--border);
+    padding-top: 10px; }
+  .suggestion-sources summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  .suggestion-source-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px;
+    color: var(--muted); padding: 3px 0; }
+  .suggestion-source-row .src-title { color: var(--text); overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .suggestion-empty { color: var(--muted); font-size: 13px; }
+
   .empty, .loading { max-width: 1400px; margin: 0 auto; padding: 80px 28px; text-align: center; color: var(--muted); font-size: 14px; }
   .pagination { max-width: 1400px; margin: -12px auto 48px; padding: 0 28px; display: flex; align-items: center;
     justify-content: center; gap: 14px; }
@@ -150,6 +167,7 @@
   <div class="pill-row view-tabs" id="viewTabs">
     <button class="pill active" data-view="videos">Videos</button>
     <button class="pill" data-view="channels">Channels</button>
+    <button class="pill" data-view="suggestions">Suggestions</button>
   </div>
 </header>
 
@@ -222,10 +240,26 @@
   <div class="channels-view-wrap" id="channelsList"></div>
 </div>
 
+<div id="suggestionsView" hidden>
+  <div class="channels-view-wrap" id="suggestionsList"></div>
+</div>
+
 <script>
 // ---- dashboard data ----
 let DATA = { videos: [], channels: [], niches: [] };
 let activeNiches = new Set(); // empty set = "all niches"
+
+// Weekly per-profile title suggestions, written by scripts/weekly_titles.py
+// (its own scheduled workflow, separate from the main tracker) into
+// docs/title_suggestions.json. Read-only here - the Suggestions tab has
+// nothing to write back, it's purely a viewer for that file.
+let SUGGESTIONS = { generated_at: null, profiles: [] };
+async function loadSuggestions() {
+  try {
+    const res = await fetch('title_suggestions.json', { cache: 'no-store' });
+    if (res.ok) SUGGESTIONS = await res.json();
+  } catch (e) { /* offline, or the weekly job hasn't run yet - empty state stands */ }
+}
 
 // Favourites live in two places. localStorage always has them, instantly, on
 // this one browser - that's what keeps working with no setup at all. If a
@@ -384,11 +418,55 @@ function renderChannelsView() {
   });
 }
 
+// ---- suggestions view (weekly, read-only viewer for title_suggestions.json) ----
+function renderSuggestionsView() {
+  const container = document.getElementById('suggestionsList');
+  const profiles = SUGGESTIONS.profiles || [];
+
+  if (!profiles.length) {
+    container.innerHTML = '<div class="suggestion-empty">No suggestions yet. Add profiles to profiles.yaml ' +
+      'and the weekly job will start filling this in after its next scheduled run (or trigger ' +
+      '"Weekly Title Suggestions" from the Actions tab to run it now).</div>';
+    return;
+  }
+
+  const generatedTxt = SUGGESTIONS.generated_at ? new Date(SUGGESTIONS.generated_at).toLocaleString() : 'never';
+  container.innerHTML = profiles.map(p => {
+    const tagsHtml = (p.tags || []).map(t => `<span class="niche-tag">${escapeHtml(t)}</span>`).join('');
+    const sources = p.source_outliers || [];
+    const sourcesHtml = sources.length ? `
+      <details class="suggestion-sources">
+        <summary>${sources.length} outlier${sources.length === 1 ? '' : 's'} this drew from</summary>
+        ${sources.map(s => `
+          <div class="suggestion-source-row">
+            <span class="src-title">${escapeHtml(s.title)} — ${escapeHtml(s.channel_name)}</span>
+            <span>${s.ratio != null ? s.ratio + '×' : 'n/a'} · ${s.views != null ? s.views.toLocaleString() + ' views' : ''}</span>
+          </div>`).join('')}
+      </details>` : '';
+    const bodyHtml = p.suggestions
+      ? `<div class="suggestion-body">${escapeHtml(p.suggestions)}</div>`
+      : `<div class="suggestion-empty">No suggestions generated this run` +
+        `${p.matched_outlier_count ? '' : ' — nothing matched this profile\'s tags in the last 7 days'}.</div>`;
+    return `
+      <div class="suggestion-card">
+        <div class="suggestion-head">
+          <h3>${escapeHtml(p.name)}</h3>
+          <span class="suggestion-meta">Generated ${escapeHtml(generatedTxt)} · ${p.matched_outlier_count || 0} matching outlier${p.matched_outlier_count === 1 ? '' : 's'}</span>
+        </div>
+        <div class="suggestion-tags">${tagsHtml}</div>
+        ${bodyHtml}
+        ${sourcesHtml}
+      </div>`;
+  }).join('');
+}
+
 function setView(view) {
   document.getElementById('videosView').hidden = view !== 'videos';
   document.getElementById('channelsView').hidden = view !== 'channels';
+  document.getElementById('suggestionsView').hidden = view !== 'suggestions';
   document.querySelectorAll('.view-tabs .pill').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   if (view === 'channels') renderChannelsView();
+  if (view === 'suggestions') renderSuggestionsView();
 }
 document.querySelectorAll('.view-tabs .pill').forEach(b => {
   b.onclick = () => setView(b.dataset.view);
@@ -400,6 +478,7 @@ async function load() {
       fetch('data.json', { cache: 'no-store' }),
       syncFavoritesFromRepo(),
       syncFavoriteChannelsFromRepo(),
+      loadSuggestions(),
     ]);
     DATA = await res.json();
   } catch (e) {
