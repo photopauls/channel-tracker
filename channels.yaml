@@ -533,7 +533,3 @@ channels:
   - url: https://www.youtube.com/@heyDominik/videos
     tags:
       - business
-  - url: https://www.youtube.com/@VYVEWellness/videos
-    tags:
-      - health
-    since: '2026-01-20'
