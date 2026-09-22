@@ -533,3 +533,8 @@ channels:
   - url: https://www.youtube.com/@heyDominik/videos
     tags:
       - business
+  - url: https://www.youtube.com/@VYVEWellness/videos
+    tags:
+      - health
+    name: VYVE Wellness
+    since: '2026-01-20'
