@@ -538,3 +538,6 @@ channels:
       - health
     name: VYVE Wellness
     since: '2026-01-20'
+  - url: Making.Moves.Podcast
+    tags:
+      - health
