@@ -619,3 +619,6 @@ channels:
   - url: https://www.youtube.com/@goglencoco/videos
     tags:
       - v2c
+  - url: https://www.youtube.com/@InstantlyAI/videos
+    tags:
+      - v2c
