@@ -377,8 +377,9 @@ channels:
     niche: random
     since: '2025-09-14'
   - url: https://www.youtube.com/@JeremyHaynesTraining/videos
-    niche: random
     since: '2025-09-14'
+    tags:
+      - v2c
   - url: https://www.youtube.com/@justinhickox/videos
     niche: random
     since: '2025-09-14'
