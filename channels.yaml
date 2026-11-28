@@ -440,8 +440,9 @@ channels:
     niche: random
     since: '2025-09-14'
   - url: https://www.youtube.com/@DrTessaDamm/videos
-    niche: random
     since: '2025-09-14'
+    tags:
+      - v2c
   - url: https://www.youtube.com/@theMITmonk
     niche: random
     since: '2025-09-14'
