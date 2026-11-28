@@ -613,3 +613,6 @@ channels:
   - url: https://www.youtube.com/@arsh-sanwarwala/videos
     tags:
       - random
+  - url: https://www.youtube.com/@SaminYasar_/videos
+    tags:
+      - v2c
